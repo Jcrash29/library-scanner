@@ -1,5 +1,6 @@
 package com.example.myapplication
 
+import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.View
@@ -19,6 +20,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
+import java.lang.Thread.sleep
+import org.openqa.selenium.WebDriver
+import org.openqa.selenium.chrome.ChromeDriver
+import org.openqa.selenium.chrome.ChromeOptions
 
 data class BookEntry(
     val authorName: String?,
@@ -52,12 +57,60 @@ class MainActivity : AppCompatActivity() {
         navView.setupWithNavController(navController)
     }
 
+    private fun getWebpageHtml(url: String): String {
+        // Set the path to your ChromeDriver executable
+        //System.setProperty("webdriver.chrome.driver", "/path/to/chromedriver")
+
+        // Set Chrome options to run in headless mode
+        val options = ChromeOptions()
+        options.addArguments("--headless") // Optional: Add other arguments as needed
+
+        // Initialize the ChromeDriver with options
+        val driver: WebDriver = ChromeDriver(options)
+        return try {
+            // Navigate to the specified URL
+            driver.get(url)
+
+            // Retrieve and return the HTML source of the page
+            driver.pageSource
+        } finally {
+            // Quit the driver to close the browser
+            driver.quit()
+        }
+    }
+
     private fun fetchWebpage(url: String, callback: (BookEntry?) -> Unit) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                //Get the webpage
-                val document = Jsoup.connect(url).get()
+                //Get the data from the webpage
+                var document = Jsoup.connect(url)
+                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36")
+                    .header("Referer", "https://www.google.com")
+                    .header("Accept-Language", "en-US,en;q=0.9")
+                    .get()
 
+                // Check the Webpage data, and re-load the page if it failed initially.
+                var retries = 5
+                val titlePattern = "<title>(.*?)</title>".toRegex()
+                while(retries > 0) {
+                    val matchResult = titlePattern.find(document.toString())
+                    val title = matchResult?.groups?.get(1)?.value
+
+                    val isTitleNoConnection = title == "LC Catalog - No Connections Available"
+
+                    if(!isTitleNoConnection)
+                    {
+                        retries = 0
+                    }
+                    else
+                    {
+                        retries -= 1
+                        sleep(3000)
+                        //document = Jsoup.connect(url).get()
+                        var document2 = getWebpageHtml(url)
+                    }
+
+                }
                 //Process the webpage data
                 //Get the Title:
                 val mainTitleElement: Element? = document.selectFirst("h3.item-title:contains(Main title)")
@@ -116,7 +169,7 @@ class MainActivity : AppCompatActivity() {
     fun scanClick(view: View?){
         println("Scan Clicked!")
 
-        checkPermission(android.Manifest.permission.CAMERA, 100)
+        checkPermission(Manifest.permission.CAMERA, 100)
 
         val scanner = GmsBarcodeScanning.getClient(this)
         scanner.startScan()
