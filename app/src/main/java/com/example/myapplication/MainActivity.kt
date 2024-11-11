@@ -21,9 +21,12 @@ import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import java.lang.Thread.sleep
+import java.net.HttpURLConnection
 import org.openqa.selenium.WebDriver
 import org.openqa.selenium.chrome.ChromeDriver
 import org.openqa.selenium.chrome.ChromeOptions
+import java.net.URL
+import javax.net.ssl.HttpsURLConnection
 
 data class BookEntry(
     val authorName: String?,
@@ -58,24 +61,29 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun getWebpageHtml(url: String): String {
-        // Set the path to your ChromeDriver executable
-        //System.setProperty("webdriver.chrome.driver", "/path/to/chromedriver")
+        val url_2 = URL(url)
+        val urlConnection = url_2.openConnection() as HttpURLConnection
 
-        // Set Chrome options to run in headless mode
-        val options = ChromeOptions()
-        options.addArguments("--headless") // Optional: Add other arguments as needed
+        /* Set a property onto our web request. Simulate a browser? */
+        //urlConnection.setRequestProperty("User-Agent", "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; .NET CLR 1.0.3705; .NET CLR 1.1.4322; .NET CLR 1.2.30703)");
+        urlConnection.setRequestProperty("User-Agent", "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.4; en-US; rv:1.9.2.2) Gecko/20100316 Firefox/3.6.2");
 
-        // Initialize the ChromeDriver with options
-        val driver: WebDriver = ChromeDriver(options)
-        return try {
-            // Navigate to the specified URL
-            driver.get(url)
+        /* Perform a test connection. Not needed? */
+        urlConnection.requestMethod = "GET"
+        urlConnection.connect()
+        val responseCode = urlConnection.responseCode
+        if (responseCode == HttpURLConnection.HTTP_OK) {
+            println("Connection good")
+        } else {
+            println("Connection Failed")
+        }
 
-            // Retrieve and return the HTML source of the page
-            driver.pageSource
+        try {
+            val test = urlConnection.inputStream.bufferedReader().readText()
+            println("We got something ")
+            return test
         } finally {
-            // Quit the driver to close the browser
-            driver.quit()
+            urlConnection.disconnect()
         }
     }
 
@@ -83,11 +91,7 @@ class MainActivity : AppCompatActivity() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 //Get the data from the webpage
-                var document = Jsoup.connect(url)
-                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36")
-                    .header("Referer", "https://www.google.com")
-                    .header("Accept-Language", "en-US,en;q=0.9")
-                    .get()
+                var document = getWebpageHtml(url)
 
                 // Check the Webpage data, and re-load the page if it failed initially.
                 var retries = 5
@@ -107,46 +111,46 @@ class MainActivity : AppCompatActivity() {
                         retries -= 1
                         sleep(3000)
                         //document = Jsoup.connect(url).get()
-                        var document2 = getWebpageHtml(url)
+                        document = getWebpageHtml(url)
                     }
 
                 }
                 //Process the webpage data
                 //Get the Title:
-                val mainTitleElement: Element? = document.selectFirst("h3.item-title:contains(Main title)")
-                val mainTitleText: String? = mainTitleElement?.let {
-                    it.nextElementSibling()?.selectFirst("span[dir=ltr]")?.text()
-                }
+//                val mainTitleElement: Element? = document.selectFirst("h3.item-title:contains(Main title)")
+//                val mainTitleText: String? = mainTitleElement?.let {
+//                    it.nextElementSibling()?.selectFirst("span[dir=ltr]")?.text()
+//                }
+//
+//                //Get the Authors name:
+//                val authorNameElement: Element? = document.selectFirst("h3.item-title:contains(Personal name)")
+//                val authorNameText: String? = mainTitleElement?.let {
+//                    it.nextElementSibling()?.selectFirst("span[dir=ltr]")?.text()
+//                }
+//
+//                //Get the Subjects name:
+//                val subjectsElement: Element? = document.selectFirst("h3.item-title:contains(LC Subjects)")
+//                val subjectsText: String? = mainTitleElement?.let {
+//                    it.nextElementSibling()?.selectFirst("span[dir=ltr]")?.text()
+//                }
+//
+//                //Get the LCCN:
+//                val lccnElement: Element? = document.selectFirst("h3.item-title:contains(LCCN)")
+//                val lccnText: String? = mainTitleElement?.let {
+//                    it.nextElementSibling()?.selectFirst("span[dir=ltr]")?.text()
+//                }
 
-                //Get the Authors name:
-                val authorNameElement: Element? = document.selectFirst("h3.item-title:contains(Personal name)")
-                val authorNameText: String? = mainTitleElement?.let {
-                    it.nextElementSibling()?.selectFirst("span[dir=ltr]")?.text()
-                }
+//                val bookEntry = BookEntry(
+//                    authorName = authorNameText,
+//                    mainTitle = mainTitleText,
+//                    subjects = subjectsText,
+//                    lccn = lccnText
+//                )
 
-                //Get the Subjects name:
-                val subjectsElement: Element? = document.selectFirst("h3.item-title:contains(LC Subjects)")
-                val subjectsText: String? = mainTitleElement?.let {
-                    it.nextElementSibling()?.selectFirst("span[dir=ltr]")?.text()
-                }
-
-                //Get the LCCN:
-                val lccnElement: Element? = document.selectFirst("h3.item-title:contains(LCCN)")
-                val lccnText: String? = mainTitleElement?.let {
-                    it.nextElementSibling()?.selectFirst("span[dir=ltr]")?.text()
-                }
-
-                val bookEntry = BookEntry(
-                    authorName = authorNameText,
-                    mainTitle = mainTitleText,
-                    subjects = subjectsText,
-                    lccn = lccnText
-                )
-
-                //return from the function
-                withContext(Dispatchers.Main) {
-                    callback(bookEntry)
-                }
+//                //return from the function
+//                withContext(Dispatchers.Main) {
+//                    callback(bookEntry)
+//                }
             } catch (e: Exception) {
                 e.printStackTrace()
                 withContext(Dispatchers.Main) {
