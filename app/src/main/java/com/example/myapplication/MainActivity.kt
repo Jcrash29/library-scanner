@@ -19,7 +19,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
+import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
+import org.jsoup.select.Elements
 import java.lang.Thread.sleep
 import java.net.HttpURLConnection
 import org.openqa.selenium.WebDriver
@@ -31,7 +33,7 @@ import javax.net.ssl.HttpsURLConnection
 data class BookEntry(
     val authorName: String?,
     val mainTitle: String?,
-    val subjects: String?,
+    val subjects: List<String>?,
     val lccn: String?,
 )
 
@@ -65,8 +67,26 @@ class MainActivity : AppCompatActivity() {
         val urlConnection = url_2.openConnection() as HttpURLConnection
 
         /* Set a property onto our web request. Simulate a browser? */
-        //urlConnection.setRequestProperty("User-Agent", "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; .NET CLR 1.0.3705; .NET CLR 1.1.4322; .NET CLR 1.2.30703)");
-        urlConnection.setRequestProperty("User-Agent", "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.4; en-US; rv:1.9.2.2) Gecko/20100316 Firefox/3.6.2");
+        val userAgents = listOf(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36",
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.4; en-US; rv:1.9.2.2) Gecko/20100317 Firefox/3.6.2"
+        )
+        urlConnection.setRequestProperty("User-Agent", userAgents.random())
+
+        /* Set other properties to avoid bot detection */
+        urlConnection.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
+        urlConnection.setRequestProperty("Accept-Language", "en-US,en;q=0.5")
+        //urlConnection.setRequestProperty("Accept-Encoding", "gzip, deflate")
+        urlConnection.setRequestProperty("Connection", "keep-alive")
+
+        // Add screen-related headers
+        urlConnection.setRequestProperty("Viewport-Width", "1920")
+        urlConnection.setRequestProperty("Viewport-Height", "1080")
+        urlConnection.setRequestProperty("DPR", "1")  // Device Pixel Ratio
+        urlConnection.setRequestProperty("Width", "1920")
+        urlConnection.setRequestProperty("Height", "1080")
 
         /* Perform a test connection. Not needed? */
         urlConnection.requestMethod = "GET"
@@ -87,17 +107,56 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    fun extractAuthor(document: Document): String? {
+
+        // Find the "Personal name" section
+        val personalNameSection: Elements = document.select("h3.item-title:contains(Personal name) + ul.item-description")
+
+        // Get the author's name from the <span> tag within this section
+        val authorName = personalNameSection.select("span[dir=ltr]").firstOrNull()?.text()
+
+        // Remove the ", author." suffix if present
+        return authorName?.removeSuffix(", author.")
+    }
+
+    fun extractTitle(document: Document): String? {
+        // Find the "Personal name" section
+        val mainTitleSection: Elements = document.select("h3.item-title:contains(Main title) + ul.item-description")
+
+        // Get the author's name from the <span> tag within this section
+        val title = mainTitleSection.select("span[dir=ltr]").firstOrNull()?.text()
+
+        // Remove everything after "/" if present
+        return title?.substringBefore(" /")
+    }
+
+    fun extractSubjects(document: Document): List<String> {
+        // Select the "LC Subjects" section
+        val subjectsSection: Elements = document.select("h3.item-title:contains(LC Subjects) + ul.item-description")
+
+        // Extract all subjects from the <span> tags inside <li> elements within this section
+        return subjectsSection.select("li span[dir=ltr]").map { it.text() }
+    }
+
+    fun extractLCCN(document: Document): String? {
+        // Find the "Personal name" section
+        val lccnSection: Elements = document.select("h3.item-title:contains(LCCN) + ul.item-description")
+
+        // Get the author's name from the <span> tag within this section
+        return lccnSection.select("span[dir=ltr]").firstOrNull()?.text()
+    }
+
     private fun fetchWebpage(url: String, callback: (BookEntry?) -> Unit) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 //Get the data from the webpage
-                var document = getWebpageHtml(url)
+                var html = getWebpageHtml(url)
 
                 // Check the Webpage data, and re-load the page if it failed initially.
                 var retries = 5
                 val titlePattern = "<title>(.*?)</title>".toRegex()
                 while(retries > 0) {
-                    val matchResult = titlePattern.find(document.toString())
+                    val matchResult = titlePattern.find(html.toString())
                     val title = matchResult?.groups?.get(1)?.value
 
                     val isTitleNoConnection = title == "LC Catalog - No Connections Available"
@@ -111,46 +170,24 @@ class MainActivity : AppCompatActivity() {
                         retries -= 1
                         sleep(3000)
                         //document = Jsoup.connect(url).get()
-                        document = getWebpageHtml(url)
+                        html = getWebpageHtml(url)
                     }
-
                 }
-                //Process the webpage data
-                //Get the Title:
-//                val mainTitleElement: Element? = document.selectFirst("h3.item-title:contains(Main title)")
-//                val mainTitleText: String? = mainTitleElement?.let {
-//                    it.nextElementSibling()?.selectFirst("span[dir=ltr]")?.text()
-//                }
-//
-//                //Get the Authors name:
-//                val authorNameElement: Element? = document.selectFirst("h3.item-title:contains(Personal name)")
-//                val authorNameText: String? = mainTitleElement?.let {
-//                    it.nextElementSibling()?.selectFirst("span[dir=ltr]")?.text()
-//                }
-//
-//                //Get the Subjects name:
-//                val subjectsElement: Element? = document.selectFirst("h3.item-title:contains(LC Subjects)")
-//                val subjectsText: String? = mainTitleElement?.let {
-//                    it.nextElementSibling()?.selectFirst("span[dir=ltr]")?.text()
-//                }
-//
-//                //Get the LCCN:
-//                val lccnElement: Element? = document.selectFirst("h3.item-title:contains(LCCN)")
-//                val lccnText: String? = mainTitleElement?.let {
-//                    it.nextElementSibling()?.selectFirst("span[dir=ltr]")?.text()
-//                }
 
-//                val bookEntry = BookEntry(
-//                    authorName = authorNameText,
-//                    mainTitle = mainTitleText,
-//                    subjects = subjectsText,
-//                    lccn = lccnText
-//                )
+                /* convert the HTML into a JSOUP Documents type */
+                val document: Document = Jsoup.parse(html)
 
-//                //return from the function
-//                withContext(Dispatchers.Main) {
-//                    callback(bookEntry)
-//                }
+                val bookEntry = BookEntry(
+                    authorName = extractAuthor(document),
+                    mainTitle = extractTitle(document),
+                    subjects = extractSubjects(document),
+                    lccn = extractLCCN(document)
+                )
+
+                //return from the function
+                withContext(Dispatchers.Main) {
+                    callback(bookEntry)
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
                 withContext(Dispatchers.Main) {
@@ -159,6 +196,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
+
 
     private fun checkPermission(permission: String, requestCode: Int) {
         if (ContextCompat.checkSelfPermission(this@MainActivity, permission) == PackageManager.PERMISSION_DENIED) {
