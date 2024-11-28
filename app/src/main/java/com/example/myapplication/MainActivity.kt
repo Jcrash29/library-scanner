@@ -1,9 +1,14 @@
+
+
+
 package com.example.myapplication
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.View
+import android.widget.Button
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.findNavController
@@ -20,15 +25,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
-import org.jsoup.nodes.Element
 import org.jsoup.select.Elements
 import java.lang.Thread.sleep
 import java.net.HttpURLConnection
-import org.openqa.selenium.WebDriver
-import org.openqa.selenium.chrome.ChromeDriver
-import org.openqa.selenium.chrome.ChromeOptions
 import java.net.URL
-import javax.net.ssl.HttpsURLConnection
 
 data class BookEntry(
     val authorName: String?,
@@ -60,6 +60,13 @@ class MainActivity : AppCompatActivity() {
         )
         setupActionBarWithNavController(navController, appBarConfiguration)
         navView.setupWithNavController(navController)
+
+
+        val bookDetailButton = findViewById<Button>(R.id.BookDetails)
+        bookDetailButton.setOnClickListener {
+            val Intent = Intent(this,BookDetails::class.java)
+            startActivity(Intent)
+        }
     }
 
     private fun getWebpageHtml(url: String): String {
