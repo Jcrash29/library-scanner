@@ -19,6 +19,7 @@ import com.example.myapplication.databinding.ActivityMainBinding
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.example.myapplication.ui.SetApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -64,9 +65,16 @@ class MainActivity : AppCompatActivity() {
 
         val bookDetailButton = findViewById<Button>(R.id.BookDetails)
         bookDetailButton.setOnClickListener {
-            val Intent = Intent(this,BookDetails::class.java)
-            startActivity(Intent)
+            val intent = Intent(this,BookDetails::class.java)
+            startActivity(intent)
         }
+
+        val homeSetAPIButton = findViewById<Button>(R.id.homeSetAPI)
+        homeSetAPIButton.setOnClickListener {
+            val intent = Intent(this,SetApi::class.java)
+            startActivity(intent)
+        }
+
     }
 
     private fun getWebpageHtml(url: String): String {
