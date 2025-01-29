@@ -26,6 +26,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import org.jsoup.nodes.Element
 import org.jsoup.select.Elements
 import java.lang.Thread.sleep
 import java.net.HttpURLConnection
@@ -34,7 +35,7 @@ import java.net.URL
 data class BookEntry(
     val authorName: String?,
     val mainTitle: String?,
-    val subjects: List<String>?,
+    val subjects: Set<String>?,
     val lccn: String?,
 )
 
@@ -122,43 +123,32 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun extractAuthor(document: Document): String? {
+    fun extractAuthor(element: Element?): String? {
 
         // Find the "Personal name" section
-        val personalNameSection: Elements = document.select("h3.item-title:contains(Personal name) + ul.item-description")
-
-        // Get the author's name from the <span> tag within this section
-        val authorName = personalNameSection.select("span[dir=ltr]").firstOrNull()?.text()
+        val author = element?.select("name[type=personal][usage=primary] > namePart")?.text()
 
         // Remove the ", author." suffix if present
-        return authorName?.removeSuffix(", author.")
+        return author
     }
 
-    fun extractTitle(document: Document): String? {
-        // Find the "Personal name" section
-        val mainTitleSection: Elements = document.select("h3.item-title:contains(Main title) + ul.item-description")
-
-        // Get the author's name from the <span> tag within this section
-        val title = mainTitleSection.select("span[dir=ltr]").firstOrNull()?.text()
-
-        // Remove everything after "/" if present
-        return title?.substringBefore(" /")
+    fun extractTitle(element: Element?): String? {
+        val title = element?.select("titleInfo > title")?.text()
+        return title
     }
 
-    fun extractSubjects(document: Document): List<String> {
+    fun extractSubjects(element: Element?): Set<String>? {
         // Select the "LC Subjects" section
-        val subjectsSection: Elements = document.select("h3.item-title:contains(LC Subjects) + ul.item-description")
+        val topics = element?.select("subject > topic")?.map { it.text() }?.toSet()  // Using Set to avoid duplicates
 
         // Extract all subjects from the <span> tags inside <li> elements within this section
-        return subjectsSection.select("li span[dir=ltr]").map { it.text() }
+        return topics
     }
 
-    fun extractLCCN(document: Document): String? {
+    fun extractLCCN(element: Element?): String? {
         // Find the "Personal name" section
-        val lccnSection: Elements = document.select("h3.item-title:contains(LCCN) + ul.item-description")
-
-        // Get the author's name from the <span> tag within this section
-        return lccnSection.select("span[dir=ltr]").firstOrNull()?.text()
+        val lccn = element?.select("identifier[type=lccn]")?.text()
+        return lccn
     }
 
     private fun fetchWebpage(url: String, callback: (BookEntry?) -> Unit) {
@@ -190,13 +180,17 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 /* convert the HTML into a JSOUP Documents type */
-                val document: Document = Jsoup.parse(html)
+                val document: Document = Jsoup.parse(html, "", org.jsoup.parser.Parser.xmlParser())
+
+                val records = document.getElementsByTag("zs:record")
+                val firstRecord = records.first()
+
 
                 val bookEntry = BookEntry(
-                    authorName = extractAuthor(document),
-                    mainTitle = extractTitle(document),
-                    subjects = extractSubjects(document),
-                    lccn = extractLCCN(document)
+                    authorName = extractAuthor(firstRecord),
+                    mainTitle = extractTitle(firstRecord),
+                    subjects = extractSubjects(firstRecord),
+                    lccn = extractLCCN(firstRecord)
                 )
 
                 //return from the function
@@ -204,6 +198,7 @@ class MainActivity : AppCompatActivity() {
                     callback(bookEntry)
                 }
             } catch (e: Exception) {
+                println("Error: ${e.message}")
                 e.printStackTrace()
                 withContext(Dispatchers.Main) {
                     callback(null)
@@ -235,8 +230,8 @@ class MainActivity : AppCompatActivity() {
                 println("Task completed successfully")
                 println(barcode.rawValue)
 
-                val preURL  = "https://catalog.loc.gov/vwebv/search?searchCode=STNO&searchArg="
-                val postURL = "&searchType=1&limitTo=none&fromYear=&toYear=&limitTo=LOCA%3Dall&limitTo=PLAC%3Dall&limitTo=TYPE%3Dall&limitTo=LANG%3Dall&recCount=25"
+                val preURL  = "http://lx2.loc.gov:210/lcdb?version=1.1&operation=searchRetrieve&query=%22"
+                val postURL = "%22&startRecord=1&maximumRecords=5&recordSchema=mods"
 
                 val fullURL = preURL.plus(barcode.rawValue).plus(postURL)
 
