@@ -31,21 +31,28 @@ import org.jsoup.select.Elements
 import java.lang.Thread.sleep
 import java.net.HttpURLConnection
 import java.net.URL
+import android.os.Parcelable
+import kotlinx.parcelize.Parcelize
 
+@Parcelize
 data class BookEntry(
     val authorName: String?,
     val mainTitle: String?,
     val subjects: Set<String>?,
     val lccn: String?,
-)
+) : Parcelable
 
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
 
+    val bookDetails = BookDetails()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -237,6 +244,8 @@ class MainActivity : AppCompatActivity() {
 
                 println(fullURL)
 
+                //val bookDetails = BookDetails()
+
                 fetchWebpage(fullURL) { bookEntry: BookEntry? ->
                     bookEntry?.let {
                         // Handle the result here, e.g., update the UI
@@ -247,7 +256,15 @@ class MainActivity : AppCompatActivity() {
                     } ?: run {
                         println("MainActivity Failed to fetch the webpage")
                     }
+
+                    val intent = Intent(this,BookDetails::class.java).apply {
+                        putExtra("book", bookEntry)
+                    }
+                    startActivity(intent)
+
                 }
+
+
 
             }
             .addOnCanceledListener {
