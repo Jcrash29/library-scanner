@@ -3,6 +3,8 @@
 
 package com.example.myapplication
 
+import com.example.myapplication.ui.main.BookAdapter
+import com.example.myapplication.data.repository.BookRepository
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -19,7 +21,6 @@ import com.example.myapplication.databinding.ActivityMainBinding
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.example.myapplication.ui.SetApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -27,32 +28,45 @@ import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
-import org.jsoup.select.Elements
 import java.lang.Thread.sleep
 import java.net.HttpURLConnection
 import java.net.URL
-import android.os.Parcelable
-import kotlinx.parcelize.Parcelize
-
-@Parcelize
-data class BookEntry(
-    val authorName: String?,
-    val mainTitle: String?,
-    val subjects: Set<String>?,
-    val lccn: String?,
-) : Parcelable
+import androidx.activity.viewModels
+import androidx.appcompat.app.AlertDialog
+import androidx.lifecycle.lifecycleScope
+import com.example.myapplication.ui.viewmodel.BookViewModel
+import com.example.myapplication.ui.viewmodel.BookViewModelFactory
+import com.example.myapplication.data.database.BookDatabase
+import com.example.myapplication.data.model.BookEntry
+import com.example.myapplication.ui.ViewBooksActivity
+import com.google.mlkit.vision.codescanner.GmsBarcodeScanner
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.suspendCancellableCoroutine
+import java.io.IOException
+import kotlin.coroutines.resume
 
 
 class MainActivity : AppCompatActivity() {
-
     private lateinit var binding: ActivityMainBinding
+    private lateinit var bookAdapter: BookAdapter
 
-    val bookDetails = BookDetails()
+    private val bookViewModel: BookViewModel by viewModels {
+        BookViewModelFactory(BookRepository(BookDatabase.getDatabase(this).bookDao()))
+    }
+
+    private fun errorFindingBookMsg() {
+        val dialog = AlertDialog.Builder(this@MainActivity)
+            .setTitle("Unable to find this book")
+            .setMessage("Consider retrying or manually entering")
+            .setPositiveButton("Close", null)
+            .create()
+
+        dialog.show()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -70,22 +84,16 @@ class MainActivity : AppCompatActivity() {
         setupActionBarWithNavController(navController, appBarConfiguration)
         navView.setupWithNavController(navController)
 
-
-        val bookDetailButton = findViewById<Button>(R.id.BookDetails)
-        bookDetailButton.setOnClickListener {
-            val intent = Intent(this,BookDetails::class.java)
-            startActivity(intent)
-        }
-
-        val homeSetAPIButton = findViewById<Button>(R.id.homeSetAPI)
+        val homeSetAPIButton = findViewById<Button>(R.id.homeViewBooks)
         homeSetAPIButton.setOnClickListener {
-            val intent = Intent(this,SetApi::class.java)
+            val intent = Intent(this,ViewBooksActivity::class.java)
             startActivity(intent)
         }
+
 
     }
 
-    private fun getWebpageHtml(url: String): String {
+    private fun getWebpageHtml(url: String): Result<String> {
         val url_2 = URL(url)
         val urlConnection = url_2.openConnection() as HttpURLConnection
 
@@ -113,7 +121,11 @@ class MainActivity : AppCompatActivity() {
 
         /* Perform a test connection. Not needed? */
         urlConnection.requestMethod = "GET"
-        urlConnection.connect()
+        try {
+            urlConnection.connect()
+        } catch(e: IOException) {
+            return Result.failure(e)
+        }
         val responseCode = urlConnection.responseCode
         if (responseCode == HttpURLConnection.HTTP_OK) {
             println("Connection good")
@@ -124,96 +136,126 @@ class MainActivity : AppCompatActivity() {
         try {
             val test = urlConnection.inputStream.bufferedReader().readText()
             println("We got something ")
-            return test
+            return Result.success(test)
         } finally {
             urlConnection.disconnect()
         }
     }
 
-    fun extractAuthor(element: Element?): String? {
+    fun extractAuthor(element: Element): String {
 
         // Find the "Personal name" section
-        val author = element?.select("name[type=personal][usage=primary] > namePart")?.text()
+        var author = element.select("name[type=personal][usage=primary] > namePart").text()
 
         // Remove the ", author." suffix if present
+        if(author.last() == ',')
+        {
+            author.dropLast(1)
+        }
         return author
     }
 
-    fun extractTitle(element: Element?): String? {
-        val title = element?.select("titleInfo > title")?.text()
+    fun extractTitle(element: Element): String {
+        var title = element.select("titleInfo > title").text()
+
+        /* Capitalize each word of the title */
+        title = title.split(" ").joinToString(" ") { it.replaceFirstChar { char -> char.uppercaseChar() } }
+
         return title
     }
 
-    fun extractSubjects(element: Element?): Set<String>? {
+    fun extractSubjects(element: Element): List<String> {
         // Select the "LC Subjects" section
-        val topics = element?.select("subject > topic")?.map { it.text() }?.toSet()  // Using Set to avoid duplicates
+        val topics = element.select("subject > topic").eachText()  // Using Set to avoid duplicates
 
         // Extract all subjects from the <span> tags inside <li> elements within this section
         return topics
     }
 
-    fun extractLCCN(element: Element?): String? {
+    fun extractLCCN(element: Element): String {
         // Find the "Personal name" section
-        val lccn = element?.select("identifier[type=lccn]")?.text()
+        val lccn = element.select("identifier[type=lccn]").text()
         return lccn
     }
 
-    private fun fetchWebpage(url: String, callback: (BookEntry?) -> Unit) {
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                //Get the data from the webpage
-                var html = getWebpageHtml(url)
+//    private fun fetchWebpage(url: String, callback: (BookEntry) -> Unit) : BookEntry {
+//        CoroutineScope(Dispatchers.IO).launch {
+//            try {
+//                //Get the data from the webpage
+//                var html = getWebpageHtml(url)
+//
+//                /* convert the HTML into a JSOUP Documents type */
+//                val document: Document = Jsoup.parse(html, "", org.jsoup.parser.Parser.xmlParser())
+//
+//                val numberOfRecordsText = document.select("zs\\:numberOfRecords").text()
+//                if (numberOfRecordsText == "0") {
+//                    throw IllegalStateException("Unable to find record in XML")
+//                }
+//
+//                val records = document.getElementsByTag("zs:record")
+//                val firstRecord = records.first() ?: Element("N/a")
+//
+//                val bookEntry = BookEntry(
+//                    author = extractAuthor(firstRecord),
+//                    title = extractTitle(firstRecord),
+//                    subjects = extractSubjects(firstRecord),
+//                    lccn = extractLCCN(firstRecord),
+//                    location = "Not Set"
+//                )
+//
+//                //return from the function
+//                withContext(Dispatchers.Main) {
+//                    callback(bookEntry)
+//                }
+//            } catch (e: Exception) {
+//                println("Error: ${e.message}")
+//                e.printStackTrace()
+//                withContext(Dispatchers.Main) {
+//                    callback(
+//                        BookEntry(
+//                            author = "n/a",
+//                            title = "n/a",
+//                            subjects = listOf("n/a"),
+//                            lccn = "n/a",
+//                            location = "n/a"
+//                        )
+//                    )
+//                }
+//            }
+//        }
+//    }
 
-                // Check the Webpage data, and re-load the page if it failed initially.
-                var retries = 5
-                val titlePattern = "<title>(.*?)</title>".toRegex()
-                while(retries > 0) {
-                    val matchResult = titlePattern.find(html.toString())
-                    val title = matchResult?.groups?.get(1)?.value
-
-                    val isTitleNoConnection = title == "LC Catalog - No Connections Available"
-
-                    if(!isTitleNoConnection)
-                    {
-                        retries = 0
-                    }
-                    else
-                    {
-                        retries -= 1
-                        sleep(3000)
-                        //document = Jsoup.connect(url).get()
-                        html = getWebpageHtml(url)
-                    }
-                }
-
+    private fun fetchWebpage(url: String) : Result<BookEntry> {
+        //Get the data from the webpage
+        val html = getWebpageHtml(url)
+        html
+            .onFailure { e ->
+                return Result.failure(e)
+            }
+            .onSuccess { webHTML ->
                 /* convert the HTML into a JSOUP Documents type */
-                val document: Document = Jsoup.parse(html, "", org.jsoup.parser.Parser.xmlParser())
+                val document: Document = Jsoup.parse(webHTML, "", org.jsoup.parser.Parser.xmlParser())
+
+                val numberOfRecordsText = document.getElementsByTag("zs:numberOfRecords").text()
+                if (numberOfRecordsText == "0") {
+                    return Result.failure(IllegalStateException("Unable to find record in XML"))
+                }
 
                 val records = document.getElementsByTag("zs:record")
-                val firstRecord = records.first()
-
+                val firstRecord = records.first() ?: Element("N/a")
 
                 val bookEntry = BookEntry(
-                    authorName = extractAuthor(firstRecord),
-                    mainTitle = extractTitle(firstRecord),
+                    author = extractAuthor(firstRecord),
+                    title = extractTitle(firstRecord),
                     subjects = extractSubjects(firstRecord),
-                    lccn = extractLCCN(firstRecord)
+                    lccn = extractLCCN(firstRecord),
+                    location = "Not Set"
                 )
 
-                //return from the function
-                withContext(Dispatchers.Main) {
-                    callback(bookEntry)
-                }
-            } catch (e: Exception) {
-                println("Error: ${e.message}")
-                e.printStackTrace()
-                withContext(Dispatchers.Main) {
-                    callback(null)
-                }
+                return Result.success(bookEntry)
             }
-        }
+        return Result.failure(Exception("Not sure how we got here."))
     }
-
 
 
     private fun checkPermission(permission: String, requestCode: Int) {
@@ -225,6 +267,37 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class, DelicateCoroutinesApi::class)
+    suspend fun scan(scanner : GmsBarcodeScanner) : Result<BookEntry> {
+        return suspendCancellableCoroutine { cont ->
+            scanner.startScan()
+                .addOnSuccessListener { barcode ->
+                    println("Task completed successfully")
+                    println(barcode.rawValue)
+
+                    val preURL =
+                        "http://lx2.loc.gov:210/lcdb?version=1.1&operation=searchRetrieve&query=%22"
+                    val postURL = "%22&startRecord=1&maximumRecords=5&recordSchema=mods"
+                    val fullURL = preURL.plus(barcode.rawValue).plus(postURL)
+                    println(fullURL)
+
+                    // Launch a coroutine on IO dispatcher for the network call
+                    // (Alternatively, if fetchWebpage is a suspend function, you could call it directly)
+                    kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
+                        val result = fetchWebpage(fullURL) // Assume this returns Result<BookEntry>
+                        cont.resume(result)  // Resume the continuation with the network result
+                    }
+                }
+                .addOnCanceledListener {
+                    cont.resume(Result.failure<BookEntry>(Exception("Scan canceled")))
+                }
+                .addOnFailureListener { e ->
+                    println("Task failed with an exception")
+                    println(e.message)
+                    cont.resume(Result.failure<BookEntry>(e))
+                }
+        }
+    }
 
     fun scanClick(view: View?){
         println("Scan Clicked!")
@@ -232,47 +305,23 @@ class MainActivity : AppCompatActivity() {
         checkPermission(Manifest.permission.CAMERA, 100)
 
         val scanner = GmsBarcodeScanning.getClient(this)
-        scanner.startScan()
-            .addOnSuccessListener { barcode ->
-                println("Task completed successfully")
-                println(barcode.rawValue)
-
-                val preURL  = "http://lx2.loc.gov:210/lcdb?version=1.1&operation=searchRetrieve&query=%22"
-                val postURL = "%22&startRecord=1&maximumRecords=5&recordSchema=mods"
-
-                val fullURL = preURL.plus(barcode.rawValue).plus(postURL)
-
-                println(fullURL)
-
-                //val bookDetails = BookDetails()
-
-                fetchWebpage(fullURL) { bookEntry: BookEntry? ->
-                    bookEntry?.let {
-                        // Handle the result here, e.g., update the UI
-                        println("MainActivity Main Title Text: ${it.mainTitle}")
-                        println("MainActivity The Authors Name: ${it.authorName}")
-                        println("MainActivity The Subject: ${it.subjects}")
-                        println("MainActivity The LCCN: ${it.lccn}")
-                    } ?: run {
-                        println("MainActivity Failed to fetch the webpage")
+        lifecycleScope.launch {
+            try {
+                val bookEntryResult = scan(scanner)
+                bookEntryResult
+                    .onSuccess {
+                        val intent = Intent(this@MainActivity, BookDetails::class.java).apply {
+                            putExtra("book", it)
+                        }
+                        startActivity(intent)
                     }
-
-                    val intent = Intent(this,BookDetails::class.java).apply {
-                        putExtra("book", bookEntry)
+                    .onFailure { e ->
+                        errorFindingBookMsg()
+                        println("Failed: ${e.message}")
                     }
-                    startActivity(intent)
-
-                }
-
-
-
+            } catch(e: Exception) {
+                println("Exception during scan: ${e.message}")
             }
-            .addOnCanceledListener {
-                println("Task canceled")
-            }
-            .addOnFailureListener { e ->
-                println("Task failed with an exception")
-                println(e.message)
-            }
+        }
     }
 }
