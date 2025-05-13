@@ -1,14 +1,16 @@
 package com.example.myapplication.data.database
 
-import com.example.myapplication.data.dao.BookDao
-import com.example.myapplication.data.model.BookEntry
+import dao.BookDao
+import entities.BookEntry
 import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import entities.Subject
+import entities.BookSubjectCrossRef
 
-@Database(entities = [BookEntry::class], version = 1, exportSchema = false)
+@Database(entities = [BookEntry::class, Subject::class, BookSubjectCrossRef::class], version = 2, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class BookDatabase : RoomDatabase() {
     abstract fun bookDao(): BookDao

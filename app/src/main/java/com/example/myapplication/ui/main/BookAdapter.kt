@@ -8,7 +8,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.example.myapplication.R
-import com.example.myapplication.data.model.BookEntry
+import entities.BookEntry
 
 //class BookAdapter : RecyclerView.Adapter<BookAdapter.BookViewHolder>() {
 class BookAdapter(private val onItemClick: (BookEntry, Int) -> Unit) :

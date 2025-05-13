@@ -1,4 +1,4 @@
-package com.example.myapplication.data.model
+package entities
 
 import android.os.Parcelable
 import androidx.room.Entity
@@ -8,10 +8,9 @@ import kotlinx.parcelize.Parcelize
 @Parcelize
 @Entity(tableName = "books")
 data class BookEntry(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    @PrimaryKey(autoGenerate = true) val bookId: Int = 0,
     val title: String,
     val author: String,
     val lccn: String,
-    val subjects: List<String> = emptyList(),
     val location: String
 ) : Parcelable

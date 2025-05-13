@@ -8,27 +8,25 @@
     android:layout_height="match_parent"
     tools:context=".BookDetails">
 
-
-
     <Button
-        android:id="@+id/submitBookEntry"
+        android:id="@+id/deleteBook"
         android:layout_width="wrap_content"
         android:layout_height="48dp"
         android:layout_marginStart="51dp"
         android:layout_marginTop="32dp"
-        android:text="Add Book"
+        android:text="Delete"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/listView" />
+        app:layout_constraintTop_toBottomOf="@+id/subjectsRecyclerView" />
 
     <Button
-        android:id="@+id/BackToMain"
+        android:id="@+id/ExitActivity"
         android:layout_width="wrap_content"
         android:layout_height="48dp"
         android:layout_marginTop="32dp"
         android:layout_marginEnd="36dp"
-        android:text="Cancel"
+        android:text="Ok"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/listView" />
+        app:layout_constraintTop_toBottomOf="@+id/subjectsRecyclerView" />
 
     <TextView
         android:id="@+id/textView"
@@ -76,14 +74,17 @@
         app:layout_constraintStart_toEndOf="@+id/textView2"
         app:layout_constraintTop_toBottomOf="@+id/titleTextBox" />
 
-    <ListView
-        android:id="@+id/listView"
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/subjectsRecyclerView"
         android:layout_width="288dp"
         android:layout_height="325dp"
         android:layout_marginStart="48dp"
         android:layout_marginTop="64dp"
+        android:background="@drawable/border"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/authorTextBox" />
+        app:layout_constraintTop_toBottomOf="@+id/authorTextBox"
+        android:orientation="vertical"
+        android:padding="8dp"/>
 
     <TextView
         android:id="@+id/textView7"

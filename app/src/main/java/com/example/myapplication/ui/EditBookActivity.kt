@@ -5,15 +5,12 @@ import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.widget.ArrayAdapter
-import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
-import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.myapplication.data.database.BookDatabase
-import com.example.myapplication.data.model.BookEntry
+import entities.BookEntry
 import com.example.myapplication.data.repository.BookRepository
 import com.example.myapplication.databinding.ActivityEditBookBinding
-import com.example.myapplication.databinding.ActivityViewBooksBinding
 import com.example.myapplication.ui.main.BookAdapter
 import com.example.myapplication.ui.viewmodel.BookViewModel
 import com.example.myapplication.ui.viewmodel.BookViewModelFactory
@@ -40,9 +37,9 @@ class EditBookActivity : AppCompatActivity() {
             binding.authorEditText.setText(book.author)
         }
 
-        val adapter = currentBook?.let { ArrayAdapter(this, R.layout.simple_list_item_1, it.subjects) }
+//        val adapter = currentBook?.let { ArrayAdapter(this, R.layout.simple_list_item_1, it.subjects) }
 
-        binding.listView.adapter = adapter
+//        binding.listView.adapter = adapter
 
         // Get book position
         val position: Int = intent.getIntExtra("position", -1)

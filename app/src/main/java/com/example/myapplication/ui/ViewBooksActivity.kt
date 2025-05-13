@@ -1,6 +1,5 @@
 package com.example.myapplication.ui
 
-import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
@@ -10,7 +9,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.myapplication.data.database.BookDatabase
-import com.example.myapplication.data.model.BookEntry
 import com.example.myapplication.data.repository.BookRepository
 import com.example.myapplication.databinding.ActivityViewBooksBinding
 import com.example.myapplication.ui.main.BookAdapter
