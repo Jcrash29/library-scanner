@@ -88,59 +88,57 @@ class MainActivity : AppCompatActivity() {
 
         val homeSetAPIButton = findViewById<Button>(R.id.homeViewBooks)
         homeSetAPIButton.setOnClickListener {
-            val intent = Intent(this,ViewBooksActivity::class.java)
+            val intent = Intent(this, ViewBooksActivity::class.java)
             startActivity(intent)
         }
-
-
     }
 
-    private fun getWebpageHtml(url: String): Result<String> {
-        val url_2 = URL(url)
-        val urlConnection = url_2.openConnection() as HttpURLConnection
+    private suspend fun getWebpageHtml(url: String): Result<String> {
+        return withContext(Dispatchers.IO) {
+            val url_2 = URL(url)
+            val urlConnection = url_2.openConnection() as HttpURLConnection
 
-        /* Set a property onto our web request. Simulate a browser? */
-        val userAgents = listOf(
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36",
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36",
-            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-            "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.4; en-US; rv:1.9.2.2) Gecko/20100317 Firefox/3.6.2"
-        )
-        urlConnection.setRequestProperty("User-Agent", userAgents.random())
+            /* Set a property onto our web request. Simulate a browser? */
+            val userAgents = listOf(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36",
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36",
+                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+                "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.4; en-US; rv:1.9.2.2) Gecko/20100317 Firefox/3.6.2"
+            )
+            urlConnection.setRequestProperty("User-Agent", userAgents.random())
 
-        /* Set other properties to avoid bot detection */
-        urlConnection.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
-        urlConnection.setRequestProperty("Accept-Language", "en-US,en;q=0.5")
-        //urlConnection.setRequestProperty("Accept-Encoding", "gzip, deflate")
-        urlConnection.setRequestProperty("Connection", "keep-alive")
+            /* Set other properties to avoid bot detection */
+            urlConnection.setRequestProperty(
+                "Accept",
+                "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
+            )
+            urlConnection.setRequestProperty("Accept-Language", "en-US,en;q=0.5")
+            //urlConnection.setRequestProperty("Accept-Encoding", "gzip, deflate")
+            urlConnection.setRequestProperty("Connection", "keep-alive")
 
-        // Add screen-related headers
-        urlConnection.setRequestProperty("Viewport-Width", "1920")
-        urlConnection.setRequestProperty("Viewport-Height", "1080")
-        urlConnection.setRequestProperty("DPR", "1")  // Device Pixel Ratio
-        urlConnection.setRequestProperty("Width", "1920")
-        urlConnection.setRequestProperty("Height", "1080")
+            // Add screen-related headers
+            urlConnection.setRequestProperty("Viewport-Width", "1920")
+            urlConnection.setRequestProperty("Viewport-Height", "1080")
+            urlConnection.setRequestProperty("DPR", "1")  // Device Pixel Ratio
+            urlConnection.setRequestProperty("Width", "1920")
+            urlConnection.setRequestProperty("Height", "1080")
 
-        /* Perform a test connection. Not needed? */
-        urlConnection.requestMethod = "GET"
-        try {
-            urlConnection.connect()
-        } catch(e: IOException) {
-            return Result.failure(e)
-        }
-        val responseCode = urlConnection.responseCode
-        if (responseCode == HttpURLConnection.HTTP_OK) {
-            println("Connection good")
-        } else {
-            println("Connection Failed")
-        }
-
-        try {
-            val test = urlConnection.inputStream.bufferedReader().readText()
-            println("We got something ")
-            return Result.success(test)
-        } finally {
-            urlConnection.disconnect()
+            try {
+                urlConnection.connect()
+                val responseCode = urlConnection.responseCode
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    println("Connection good")
+                    val test = urlConnection.inputStream.bufferedReader().readText()
+                    Result.success(test)
+                } else {
+                    println("Connection Failed")
+                    Result.failure(IOException("HTTP error code: $responseCode"))
+                }
+            } catch (e: IOException) {
+                Result.failure(e)
+            } finally {
+                urlConnection.disconnect()
+            }
         }
     }
 
@@ -177,7 +175,7 @@ class MainActivity : AppCompatActivity() {
         return lccn
     }
 
-    private fun fetchWebpage(url: String) : Result<Pair<BookEntry, List<Subject>>> {
+    private suspend fun fetchWebpage(url: String) : Result<Pair<BookEntry, List<Subject>>> {
         //Get the data from the webpage
         val html = getWebpageHtml(url)
         html
@@ -200,7 +198,9 @@ class MainActivity : AppCompatActivity() {
                     author = extractAuthor(firstRecord),
                     title = extractTitle(firstRecord),
                     lccn = extractLCCN(firstRecord),
-                    location = "Not Set"
+                    location = "Not Set",
+                    isbn = "Not Set", //TODO: set this
+                    url = url
                 )
 
                 val subjects = extractSubjects(firstRecord)
@@ -214,7 +214,7 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-   fun insertSubjects(subjects: List<Subject>) {
+   suspend fun insertSubjects(subjects: List<Subject>) {
         subjects.forEach { subject ->
             try {
                 bookViewModel.insertSubject(subject)
@@ -240,25 +240,41 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private suspend fun checkLibraryOfCongress(barCode : String) : Result<Pair<BookEntry, List<Subject>>>
+    {
+        println("Task completed successfully")
+        println(barCode)
+
+        val preURL =
+            "http://lx2.loc.gov:210/lcdb?version=1.1&operation=searchRetrieve&query=%22"
+        val postURL = "%22&startRecord=1&maximumRecords=5&recordSchema=mods"
+        val fullURL = preURL.plus(barCode).plus(postURL)
+        println(fullURL)
+
+        return fetchWebpage(fullURL)
+    }
+
+
     @OptIn(ExperimentalCoroutinesApi::class, DelicateCoroutinesApi::class)
     suspend fun scan(scanner : GmsBarcodeScanner) : Result<Pair<BookEntry, List<Subject>>> {
         return suspendCancellableCoroutine { cont ->
             scanner.startScan()
-                .addOnSuccessListener { barcode ->
-                    println("Task completed successfully")
-                    println(barcode.rawValue)
-
-                    val preURL =
-                        "http://lx2.loc.gov:210/lcdb?version=1.1&operation=searchRetrieve&query=%22"
-                    val postURL = "%22&startRecord=1&maximumRecords=5&recordSchema=mods"
-                    val fullURL = preURL.plus(barcode.rawValue).plus(postURL)
-                    println(fullURL)
-
-                    // Launch a coroutine on IO dispatcher for the network call
-                    // (Alternatively, if fetchWebpage is a suspend function, you could call it directly)
-                    kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
-                        val result = fetchWebpage(fullURL) // Assume this returns Result<BookEntry>
-                        cont.resume(result)  // Resume the continuation with the network result
+                .addOnSuccessListener { barCode ->
+                    kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO)  {
+                        checkLibraryOfCongress(barCode.rawValue.toString())
+                            .onSuccess { bookEntry ->
+                                cont.resume(Result.success(bookEntry))
+                            }
+                            .onFailure {
+                                openLibrarySearch()
+                                    .getBook(barCode.rawValue.toString())
+                                    .onSuccess { bookEntry ->
+                                        cont.resume(Result.success(bookEntry))
+                                    }
+                                    .onFailure { e ->
+                                        cont.resume(Result.failure<Pair<BookEntry, List<Subject>>>(e))
+                                    }
+                            }
                     }
                 }
                 .addOnCanceledListener {
@@ -289,9 +305,7 @@ class MainActivity : AppCompatActivity() {
 
     private suspend fun addBookProcess(bookEntry: BookEntry, subjects: List<Subject>): Int {
         println("Entered add book process")
-        val isDuplicate = withContext(Dispatchers.IO) {
-            bookViewModel.isDuplicate(bookEntry)
-        }
+        val isDuplicate = bookViewModel.isDuplicate(bookEntry)
         println("Is duplicate: $isDuplicate")
 
         return if (isDuplicate) {
@@ -309,12 +323,11 @@ class MainActivity : AppCompatActivity() {
                 bookViewModel.addBook(bookEntry)
             }.toInt().also { println("Book added with ID: $it") }
         }.also {
-            if(it != -1) {
+            if (it != -1) {
                 insertSubjects(subjects)
                 linkSubjectsToBook(it, subjects)
             }
         }
-
     }
 
     fun scanClick(view: View?){

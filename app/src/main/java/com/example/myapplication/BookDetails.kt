@@ -34,6 +34,8 @@ class BookDetails : AppCompatActivity() {
         BookViewModelFactory(BookRepository(BookDatabase.getDatabase(this).bookDao()))
     }
 
+    private var bookEntry: BookEntry? = null // Declare bookEntry as a nullable property
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -56,9 +58,8 @@ class BookDetails : AppCompatActivity() {
         println("About to launch lifecycleScope")
         // Using the bookID, get the book entry from the database
         lifecycleScope.launch {
-            val bookWithSubjects = withContext(Dispatchers.IO) {
-                bookViewModel.getBookWithSubjectsById(bookId)
-            }
+            val bookWithSubjects = bookViewModel.getBookWithSubjectsById(bookId)
+
             println("BookWithSubjects: $bookWithSubjects")
             bookWithSubjects?.let {
                 val bookEntry = it.book
@@ -75,8 +76,23 @@ class BookDetails : AppCompatActivity() {
             }
         }
 
-        val backButton = findViewById<Button>(R.id.ExitActivity)
+        val backButton = findViewById<Button>(R.id.saveBook)
         backButton.setOnClickListener {
+            //create list of subjects that are in the recycler view
+            val subjects = subjectsAdapter.getSubjects()
+
+            // Update the book entry with the new title, author
+            lifecycleScope.launch {
+                bookViewModel.updateBook(){
+                    bookEntry.copy?(
+                        title = titleTextBox.text.toString(),
+                        author = authorTextBox.text.toString(),
+
+                    )
+                }
+            }
+
+
             finish()
         }
 

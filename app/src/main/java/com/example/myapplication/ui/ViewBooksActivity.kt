@@ -6,6 +6,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.myapplication.data.database.BookDatabase
@@ -15,6 +16,8 @@ import com.example.myapplication.ui.main.BookAdapter
 import com.example.myapplication.ui.viewmodel.BookViewModel
 import com.example.myapplication.ui.viewmodel.BookViewModelFactory
 import androidx.recyclerview.widget.RecyclerView
+import com.example.myapplication.BookDetails
+import kotlinx.coroutines.launch
 
 class ViewBooksActivity : AppCompatActivity() {
     private lateinit var binding: ActivityViewBooksBinding
@@ -25,6 +28,7 @@ class ViewBooksActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        println("ViewBooksActivity onCreate called")
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
@@ -32,9 +36,8 @@ class ViewBooksActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         bookAdapter = BookAdapter { selectedBook, position ->
-            val intent = Intent(this, EditBookActivity::class.java).apply {
-                putExtra("book", selectedBook) // Send book data
-                putExtra("position", position)
+            val intent = Intent(this, BookDetails::class.java).apply {
+                putExtra("bookId", selectedBook.bookId)
             }
             startActivity(intent)
         }
@@ -66,8 +69,10 @@ class ViewBooksActivity : AppCompatActivity() {
                 .setTitle("Delete Book")
                 .setMessage("Are you sure you want to delete '${book.title}'?")
                 .setPositiveButton("Yes") { _, _ ->
-                    bookViewModel.removeBook(book) // Remove from database
-                    bookAdapter.notifyItemRemoved(position)
+                    lifecycleScope.launch {
+                        bookViewModel.removeBook(book) // Remove from database
+                        bookAdapter.notifyItemRemoved(position)
+                    }
                 }
                 .setNegativeButton("No") { dialog, _ ->
                     dialog.dismiss()

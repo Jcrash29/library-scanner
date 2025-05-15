@@ -59,7 +59,7 @@ class EditBookActivity : AppCompatActivity() {
             )
 
             if (updatedBook != null) {
-                bookViewModel.updateBook(updatedBook)
+//                bookViewModel.updateBook(updatedBook)
             }
 
             val resultIntent = Intent().apply {

@@ -12,5 +12,7 @@ data class BookEntry(
     val title: String,
     val author: String,
     val lccn: String,
-    val location: String
+    val location: String,
+    val isbn: String,
+    val url: String
 ) : Parcelable

@@ -31,4 +31,8 @@ class SubjectsAdapter(private val subjects: MutableList<String>) :
         subjects.removeAt(position)
         notifyItemRemoved(position)
     }
+
+    fun getSubjects(): List<String> {
+        return subjects
+    }
 }

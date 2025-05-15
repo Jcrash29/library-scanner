@@ -16,5 +16,5 @@ data class BookWithSubjects(
     )
     var subjects: List<Subject>
 ) {
-    constructor() : this(BookEntry(author = "", lccn = "", location = "", title = ""), emptyList())
+    constructor() : this(BookEntry(author = "", lccn = "", location = "", title = "", isbn = "", url = ""), emptyList())
 }

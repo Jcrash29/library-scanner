@@ -30,27 +30,27 @@ class BookViewModel(private val repository: BookRepository) : ViewModel() {
         }
     }
 
-    fun getBookById(bookId: Int): BookEntry {
+    suspend fun getBookById(bookId: Int): BookEntry {
         return repository.getBookById(bookId)
     }
 
-    fun getBookWithSubjectsById(bookId: Int): BookWithSubjects? {
+    suspend fun getBookWithSubjectsById(bookId: Int): BookWithSubjects? {
         return repository.getBookWithSubjectsById(bookId)
     }
 
-    fun removeBook(book: BookEntry) = viewModelScope.launch {
+    suspend fun removeBook(book: BookEntry) = viewModelScope.launch {
         repository.removeBook(book)
     }
 
-    fun updateBook(book: BookEntry) = viewModelScope.launch {
+    suspend fun updateBook(book: BookEntry) = viewModelScope.launch {
         repository.update(book)
     }
 
-    fun insertSubject(subject: Subject) = viewModelScope.launch {
+    suspend fun insertSubject(subject: Subject) = viewModelScope.launch {
         repository.insertSubject(subject)
     }
 
-    fun insertCrossRefs(crossRefs: List<BookSubjectCrossRef>) = viewModelScope.launch {
+    suspend fun insertCrossRefs(crossRefs: List<BookSubjectCrossRef>) = viewModelScope.launch {
         repository.insertCrossRefs(crossRefs)
     }
 }
