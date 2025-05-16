@@ -51,4 +51,9 @@ class BookRepository(private val bookDao: BookDao) {
         withContext(Dispatchers.IO) {
             bookDao.insertCrossRefs(crossRefs)
         }
+
+    suspend fun clearBookSubjects(bookId: Int) =
+        withContext(Dispatchers.IO) {
+            bookDao.clearBookSubjects(bookId)
+        }
 }

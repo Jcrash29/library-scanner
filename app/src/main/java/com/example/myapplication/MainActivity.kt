@@ -150,8 +150,11 @@ class MainActivity : AppCompatActivity() {
         // Remove the ", author." suffix if present
         if(author.last() == ',')
         {
-            author.dropLast(1)
+            println("Author before: $author")
+            author = author.dropLast(1)
+            println("Author  after: $author")
         }
+
         return author
     }
 

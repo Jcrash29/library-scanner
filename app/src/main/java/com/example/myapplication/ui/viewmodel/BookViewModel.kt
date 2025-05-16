@@ -53,4 +53,8 @@ class BookViewModel(private val repository: BookRepository) : ViewModel() {
     suspend fun insertCrossRefs(crossRefs: List<BookSubjectCrossRef>) = viewModelScope.launch {
         repository.insertCrossRefs(crossRefs)
     }
+
+    suspend fun clearBookSubjects(bookId: Int) = viewModelScope.launch {
+        repository.clearBookSubjects(bookId)
+    }
 }

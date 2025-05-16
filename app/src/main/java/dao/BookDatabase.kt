@@ -48,4 +48,8 @@ interface BookDao {
     // CrossRef operations
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertCrossRefs(crossRefs: List<BookSubjectCrossRef>)
+
+    @Query("DELETE FROM BookSubjectCrossRef WHERE bookId = :bookId")
+    suspend fun clearBookSubjects(bookId: Int)
+
 }

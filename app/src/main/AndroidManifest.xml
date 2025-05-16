@@ -24,7 +24,6 @@
             android:name=".BookDetails"
             android:exported="false" />
         <activity android:name=".ui.ViewBooksActivity" />
-        <activity android:name=".ui.EditBookActivity" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

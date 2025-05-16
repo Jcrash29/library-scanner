@@ -18,6 +18,7 @@ import com.example.myapplication.databinding.ActivityBookDetailsBinding
 import com.example.myapplication.ui.main.SubjectsAdapter
 import com.example.myapplication.ui.viewmodel.BookViewModel
 import com.example.myapplication.ui.viewmodel.BookViewModelFactory
+import entities.BookSubjectCrossRef
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -62,12 +63,12 @@ class BookDetails : AppCompatActivity() {
 
             println("BookWithSubjects: $bookWithSubjects")
             bookWithSubjects?.let {
-                val bookEntry = it.book
+                bookEntry = it.book
                 val subjects = it.subjects.map { subject -> subject.subjectName } // Extract subject names
                 println("subjects: $subjects")
-                println("BookDetails: Book ID: ${bookEntry.bookId}, Title: ${bookEntry.title}, Author: ${bookEntry.author}")
-                titleTextBox.setText(bookEntry.title)
-                authorTextBox.setText(bookEntry.author)
+                println("BookDetails: Book ID: ${bookEntry?.bookId}, Title: ${bookEntry?.title}, Author: ${bookEntry?.author}")
+                titleTextBox.setText(bookEntry?.title)
+                authorTextBox.setText(bookEntry?.author)
 
                 // Initialize RecyclerView with subjects
                 subjectsAdapter = SubjectsAdapter(subjects.toMutableList())
@@ -76,19 +77,32 @@ class BookDetails : AppCompatActivity() {
             }
         }
 
-        val backButton = findViewById<Button>(R.id.saveBook)
-        backButton.setOnClickListener {
+        val saveButton = findViewById<Button>(R.id.saveBook)
+        saveButton.setOnClickListener {
+            val bookEntryUpdated = bookEntry?.copy(
+                title = titleTextBox.text.toString(),
+                author = authorTextBox.text.toString()
+            )
             //create list of subjects that are in the recycler view
             val subjects = subjectsAdapter.getSubjects()
 
             // Update the book entry with the new title, author
             lifecycleScope.launch {
-                bookViewModel.updateBook(){
-                    bookEntry.copy?(
-                        title = titleTextBox.text.toString(),
-                        author = authorTextBox.text.toString(),
+                if (bookEntryUpdated != null) {
+                    bookViewModel.updateBook(bookEntryUpdated)
 
-                    )
+                    // Step 1: Clear existing cross-references for the book
+                    bookEntryUpdated.let { book ->
+                        bookViewModel.clearBookSubjects(book.bookId)
+
+                        // Step 2: Create new cross-references for the active subjects
+                        val crossRefs = subjects.map { subjectName ->
+                            BookSubjectCrossRef(bookId = book.bookId, subjectName = subjectName)
+                        }
+
+                        // Step 3: Insert the new cross-references into the database
+                        bookViewModel.insertCrossRefs(crossRefs)
+                    }
                 }
             }
 
