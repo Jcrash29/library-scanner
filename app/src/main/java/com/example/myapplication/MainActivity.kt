@@ -159,11 +159,20 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun extractTitle(element: Element): String {
-        var title = element.select("titleInfo > title").text()
+        val titleElement = element.selectFirst("titleInfo > title")
+        var title = titleElement?.text()
+
 
         /* Capitalize each word of the title */
-        title = title.split(" ").joinToString(" ") { it.replaceFirstChar { char -> char.uppercaseChar() } }
-
+        if(title != null) {
+            title = title.split(" ")
+                .joinToString(" ") { it.replaceFirstChar { char -> char.uppercaseChar() } }
+        }
+        else
+        {
+            println("Title not found")
+            title = "N/A"
+        }
         return title
     }
 
@@ -250,7 +259,7 @@ class MainActivity : AppCompatActivity() {
 
         val preURL =
             "http://lx2.loc.gov:210/lcdb?version=1.1&operation=searchRetrieve&query=%22"
-        val postURL = "%22&startRecord=1&maximumRecords=5&recordSchema=mods"
+        val postURL = "%22&startRecord=1&maximumRecords=1&recordSchema=mods"
         val fullURL = preURL.plus(barCode).plus(postURL)
         println(fullURL)
 
