@@ -56,4 +56,9 @@ class BookRepository(private val bookDao: BookDao) {
         withContext(Dispatchers.IO) {
             bookDao.clearBookSubjects(bookId)
         }
+
+    suspend fun getAllSubjects(): List<Subject> =
+        withContext(Dispatchers.IO) {
+            bookDao.getAllSubjects()
+    }
 }

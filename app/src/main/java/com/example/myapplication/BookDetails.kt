@@ -1,8 +1,11 @@
 package com.example.myapplication
 
+import android.content.DialogInterface
 import android.os.Bundle
+import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ListView
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
@@ -18,7 +21,9 @@ import com.example.myapplication.databinding.ActivityBookDetailsBinding
 import com.example.myapplication.ui.main.SubjectsAdapter
 import com.example.myapplication.ui.viewmodel.BookViewModel
 import com.example.myapplication.ui.viewmodel.BookViewModelFactory
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import entities.BookSubjectCrossRef
+import entities.Subject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -46,8 +51,8 @@ class BookDetails : AppCompatActivity() {
         binding = ActivityBookDetailsBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        val titleTextBox : EditText = findViewById(R.id.titleTextBox);
-        val authorTextBox : EditText = findViewById(R.id.authorTextBox);
+        val titleTextBox: EditText = findViewById(R.id.titleTextBox);
+        val authorTextBox: EditText = findViewById(R.id.authorTextBox);
 
         // Initialize RecyclerView
         subjectsRecyclerView = findViewById(R.id.subjectsRecyclerView)
@@ -64,7 +69,8 @@ class BookDetails : AppCompatActivity() {
             println("BookWithSubjects: $bookWithSubjects")
             bookWithSubjects?.let {
                 bookEntry = it.book
-                val subjects = it.subjects.map { subject -> subject.subjectName } // Extract subject names
+                val subjects =
+                    it.subjects.map { subject -> subject.subjectName } // Extract subject names
                 println("subjects: $subjects")
                 println("BookDetails: Book ID: ${bookEntry?.bookId}, Title: ${bookEntry?.title}, Author: ${bookEntry?.author}")
                 titleTextBox.setText(bookEntry?.title)
@@ -105,12 +111,16 @@ class BookDetails : AppCompatActivity() {
                     }
                 }
             }
-
-
             finish()
         }
 
         ItemTouchHelper(itemTouchHelperCallback).attachToRecyclerView(binding.subjectsRecyclerView)
+
+        val addSubjectButton: FloatingActionButton = findViewById<FloatingActionButton>(R.id.addSubjectButton)
+        addSubjectButton.setOnClickListener {
+            println("Add Subject Button Clicked")
+            showSelectSubjectDialog()
+        }
 
         binding.deleteBook.setOnClickListener {
             lifecycleScope.launch {
@@ -124,16 +134,21 @@ class BookDetails : AppCompatActivity() {
         }
     }
 
-    private val itemTouchHelperCallback = object : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT) {
-        override fun onMove(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder, target: RecyclerView.ViewHolder): Boolean {
-            return false
-        }
+    private val itemTouchHelperCallback =
+        object : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT) {
+            override fun onMove(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                target: RecyclerView.ViewHolder
+            ): Boolean {
+                return false
+            }
 
-        override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
-            val position = viewHolder.adapterPosition
-            subjectsAdapter.removeItem(position)
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
+                val position = viewHolder.adapterPosition
+                subjectsAdapter.removeItem(position)
+            }
         }
-    }
 
     private suspend fun confirmDelete(): Boolean {
         return suspendCancellableCoroutine { cont ->
@@ -148,5 +163,70 @@ class BookDetails : AppCompatActivity() {
                 }
                 .show()
         }
+    }
+
+    private fun showSelectSubjectDialog() {
+        lifecycleScope.launch {
+            // Fetch existing subjects from the database
+            val existingSubjects = bookViewModel.getAllSubjects()
+
+            // Convert to an array for the dialog
+            val subjectNames = existingSubjects.map { it.subjectName }.toMutableList()
+            val selectedSubjects = MutableList(subjectNames.size) { false }
+
+            // Create a custom layout with a scrollable ListView
+            val listView = ListView(this@BookDetails).apply {
+                adapter = ArrayAdapter(
+                    this@BookDetails,
+                    android.R.layout.simple_list_item_multiple_choice,
+                    subjectNames
+                )
+                choiceMode = ListView.CHOICE_MODE_MULTIPLE
+                for (i in selectedSubjects.indices) {
+                    setItemChecked(i, selectedSubjects[i])
+                }
+                setOnItemClickListener { _, _, position, _ ->
+                    selectedSubjects[position] = !selectedSubjects[position]
+                }
+            }
+
+            AlertDialog.Builder(this@BookDetails)
+                .setTitle("Select or Add Subjects")
+                .setView(listView) // Set the scrollable ListView as the dialog content
+                .setPositiveButton("Add Selected") { _, _ ->
+                    // Add selected subjects to the adapter
+                    val newSubjects = subjectNames.filterIndexed { index, _ -> selectedSubjects[index] }
+                    subjectsAdapter.addSubjects(newSubjects)
+                    subjectsAdapter.notifyDataSetChanged()
+                }
+                .setNegativeButton("Cancel", null)
+                .setNeutralButton("Add Custom") { _, _ ->
+                    showAddCustomSubjectDialog(subjectNames, selectedSubjects)
+                }
+                .show()
+        }
+    }
+    private fun showAddCustomSubjectDialog(subjectNames: MutableList<String>, selectedSubjects: MutableList<Boolean>) {
+        val input = EditText(this)
+        input.hint = "Enter new subject"
+
+        AlertDialog.Builder(this)
+            .setTitle("Add Custom Subject")
+            .setView(input)
+            .setPositiveButton("Add") { _, _ ->
+                val newSubject = input.text.toString().trim()
+                if (newSubject.isNotEmpty() && newSubject !in subjectNames) {
+                    lifecycleScope.launch {
+                        val newSubjectSubject = Subject(subjectName = newSubject)
+                        bookViewModel.insertSubject(newSubjectSubject)
+                    }
+                    subjectNames.add(newSubject)
+                    selectedSubjects.add(false) // Add a new element to the list
+                    subjectsAdapter.addSubjects(listOf(newSubject))
+                    subjectsAdapter.notifyDataSetChanged()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 }

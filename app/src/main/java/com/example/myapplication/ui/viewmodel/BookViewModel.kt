@@ -57,4 +57,8 @@ class BookViewModel(private val repository: BookRepository) : ViewModel() {
     suspend fun clearBookSubjects(bookId: Int) = viewModelScope.launch {
         repository.clearBookSubjects(bookId)
     }
+
+    suspend fun getAllSubjects(): List<Subject> {
+        return repository.getAllSubjects()
+    }
 }

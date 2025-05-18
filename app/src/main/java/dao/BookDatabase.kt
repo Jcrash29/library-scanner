@@ -52,4 +52,6 @@ interface BookDao {
     @Query("DELETE FROM BookSubjectCrossRef WHERE bookId = :bookId")
     suspend fun clearBookSubjects(bookId: Int)
 
+    @Query("SELECT * FROM Subject")
+    suspend fun getAllSubjects(): List<Subject>
 }

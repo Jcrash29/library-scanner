@@ -35,4 +35,8 @@ class SubjectsAdapter(private val subjects: MutableList<String>) :
     fun getSubjects(): List<String> {
         return subjects
     }
+
+    fun addSubjects(newSubjects: List<String>) {
+        subjects.addAll(newSubjects.filter { it !in subjects }) // Avoid duplicates
+    }
 }
