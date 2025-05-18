@@ -148,7 +148,7 @@ class MainActivity : AppCompatActivity() {
         var author = element.select("name[type=personal][usage=primary] > namePart").text()
 
         // Remove the ", author." suffix if present
-        if(author.last() == ',')
+        if(author.lastOrNull() == ',')
         {
             println("Author before: $author")
             author = author.dropLast(1)

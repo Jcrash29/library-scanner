@@ -17,6 +17,11 @@ import com.example.myapplication.ui.viewmodel.BookViewModel
 import com.example.myapplication.ui.viewmodel.BookViewModelFactory
 import androidx.recyclerview.widget.RecyclerView
 import com.example.myapplication.BookDetails
+import com.example.myapplication.R
+import com.google.android.material.floatingactionbutton.FloatingActionButton
+import entities.BookEntry
+import entities.BookSubjectCrossRef
+import entities.Subject
 import kotlinx.coroutines.launch
 
 class ViewBooksActivity : AppCompatActivity() {
@@ -54,6 +59,12 @@ class ViewBooksActivity : AppCompatActivity() {
 
         ItemTouchHelper(itemTouchHelperCallback).attachToRecyclerView(binding.recyclerView)
 
+        val addBookButton: FloatingActionButton = findViewById<FloatingActionButton>(R.id.addBookButton)
+        addBookButton.setOnClickListener {
+            println("Add Subject Button Clicked")
+            addManualBook()
+        }
+
     }
 
     private val itemTouchHelperCallback = object : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT) {
@@ -69,9 +80,9 @@ class ViewBooksActivity : AppCompatActivity() {
                 .setTitle("Delete Book")
                 .setMessage("Are you sure you want to delete '${book.title}'?")
                 .setPositiveButton("Yes") { _, _ ->
+                    bookAdapter.notifyItemRemoved(position)
                     lifecycleScope.launch {
                         bookViewModel.removeBook(book) // Remove from database
-                        bookAdapter.notifyItemRemoved(position)
                     }
                 }
                 .setNegativeButton("No") { dialog, _ ->
@@ -79,6 +90,38 @@ class ViewBooksActivity : AppCompatActivity() {
                     bookAdapter.notifyItemChanged(viewHolder.adapterPosition) // Reset item so it's not removed visually
                 }
                 .show()
+        }
+    }
+
+    suspend fun linkSubjectsToBook(bookId: Int, subjects: List<Subject>) {
+        val refs = subjects.map { subject ->
+            BookSubjectCrossRef(bookId = bookId, subjectName = subject.subjectName)
+        }
+        bookViewModel.insertCrossRefs(refs)  // Again, use `@Insert(onConflict = IGNORE)`
+    }
+
+    private fun addManualBook() {
+        //Create a new book with no data, and no subjects
+        val newBook = BookEntry(
+            title = "",
+            author = "",
+            lccn = "",
+            location = "",
+            isbn = "",
+            url = ""
+        )
+        lifecycleScope.launch {
+            val bookId = bookViewModel.addBook(newBook).toInt() // Add to database
+            val subjects: List<Subject> = emptyList() // No subjects for new book
+            subjects.forEach { subject ->
+                bookViewModel.insertSubject(subject)
+                linkSubjectsToBook(bookId, subjects)
+            }
+
+            val intent = Intent(this@ViewBooksActivity, BookDetails::class.java).apply {
+                putExtra("bookId", bookId)
+            }
+            startActivity(intent) // Start BookDetails activity
         }
     }
 }

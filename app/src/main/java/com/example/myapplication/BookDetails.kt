@@ -61,6 +61,12 @@ class BookDetails : AppCompatActivity() {
         /* Extract the parcelable data that was passed in */
         val bookId = intent.getIntExtra("bookId", -1)
 
+        if (bookId == -1) {
+            println("Book ID is -1, returning")
+            finish()
+            return
+        }
+
         println("About to launch lifecycleScope")
         // Using the bookID, get the book entry from the database
         lifecycleScope.launch {
@@ -79,7 +85,7 @@ class BookDetails : AppCompatActivity() {
                 // Initialize RecyclerView with subjects
                 subjectsAdapter = SubjectsAdapter(subjects.toMutableList())
                 subjectsRecyclerView.adapter = subjectsAdapter
-                println("BookDetails: Subjects: ${subjects.joinToString(", ")}")
+                println("Loading BookDetails: Subjects: ${subjects.joinToString(", ")}")
             }
         }
 
@@ -91,6 +97,7 @@ class BookDetails : AppCompatActivity() {
             )
             //create list of subjects that are in the recycler view
             val subjects = subjectsAdapter.getSubjects()
+            println("Saving BookEntry: Subjects: ${subjects.joinToString(", ")}")
 
             // Update the book entry with the new title, author
             lifecycleScope.launch {
@@ -196,6 +203,12 @@ class BookDetails : AppCompatActivity() {
                 .setPositiveButton("Add Selected") { _, _ ->
                     // Add selected subjects to the adapter
                     val newSubjects = subjectNames.filterIndexed { index, _ -> selectedSubjects[index] }
+                    val newSubjectEntities = newSubjects.map { subjectName -> Subject(subjectName = subjectName) }
+                    lifecycleScope.launch {
+                        newSubjectEntities.forEach { subject ->
+                            bookViewModel.insertSubject(subject)
+                        }
+                    }
                     subjectsAdapter.addSubjects(newSubjects)
                     subjectsAdapter.notifyDataSetChanged()
                 }
@@ -228,5 +241,24 @@ class BookDetails : AppCompatActivity() {
             }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+
+    override fun onBackPressed() {
+        // Custom logic before the activity is closed
+        println("Back button pressed")
+
+        if(bookEntry == null)
+        {
+            super.onBackPressed()
+        }
+        // Check if the title is empty, if it is, we delete the book from the database
+        if (bookEntry?.title?.isEmpty() == true) {
+            lifecycleScope.launch {
+                val bookEntry = bookViewModel.getBookById(bookEntry?.bookId ?: -1)
+                bookViewModel.removeBook(bookEntry)
+            }
+        }
+        // Call the superclass method to handle the default behavior
+        super.onBackPressed()
     }
 }
