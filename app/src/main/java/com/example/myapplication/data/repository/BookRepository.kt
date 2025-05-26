@@ -11,6 +11,7 @@ import relations.BookWithSubjects
 
 class BookRepository(private val bookDao: BookDao) {
     val allBooks: LiveData<List<BookEntry>> = bookDao.getAllBooks()
+    val allBooksWithSubjects: LiveData<List<BookWithSubjects>> = bookDao.getBooksWithSubjects()
 
     suspend fun addBook(book: BookEntry): Long =
         withContext(Dispatchers.IO) {
@@ -61,4 +62,5 @@ class BookRepository(private val bookDao: BookDao) {
         withContext(Dispatchers.IO) {
             bookDao.getAllSubjects()
     }
+
 }

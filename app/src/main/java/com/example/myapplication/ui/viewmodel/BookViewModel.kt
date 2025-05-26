@@ -10,18 +10,35 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import relations.BookWithSubjects
 
+
 class BookViewModel(private val repository: BookRepository) : ViewModel() {
-    val allBooks: LiveData<List<BookEntry>> = repository.allBooks
+    val allBooks: LiveData<List<BookWithSubjects>> = repository.allBooksWithSubjects
+    var filteredBooks: LiveData<List<BookWithSubjects>> = allBooks
 
     init {
-        allBooks.observeForever { books ->
-            println("BookViewModel Books in DB: ${books.size}") // Check if data exists
+        viewModelScope.launch {
         }
     }
-    suspend fun addBook(book: BookEntry) : Long{
+
+    fun filterBooks(selectedSubjects: List<String>) {
+        filteredBooks = if (selectedSubjects.isEmpty()) {
+            allBooks
+        } else {
+            allBooks.switchMap() { books ->
+                books.filter {
+                    it.subjects.any { subject ->
+                        selectedSubjects.contains(subject.subjectName)
+                    }
+                }.let {
+                    MutableLiveData(it)
+                }
+            }
+        }
+    }
+
+    suspend fun addBook(book: BookEntry): Long {
         println("BookViewModel Inserted book: ${book.title}")
         return repository.addBook(book)
-
     }
 
     suspend fun isDuplicate(newBook: BookEntry): Boolean {

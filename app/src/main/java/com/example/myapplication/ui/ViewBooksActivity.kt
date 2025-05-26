@@ -2,6 +2,8 @@ package com.example.myapplication.ui
 
 import android.content.Intent
 import android.os.Bundle
+import android.widget.ArrayAdapter
+import android.widget.ListView
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
@@ -52,9 +54,10 @@ class ViewBooksActivity : AppCompatActivity() {
             adapter = bookAdapter
         }
 
-        bookViewModel.allBooks.observe(this) { books ->
+        bookViewModel.filteredBooks.observe(this) { books ->
             println("ViewBooksActivity Observed books: ${books.size}")
-            bookAdapter.submitList(books)
+            val bookEntry = books.map { it.book }
+            bookAdapter.submitList(bookEntry)
         }
 
         ItemTouchHelper(itemTouchHelperCallback).attachToRecyclerView(binding.recyclerView)
@@ -65,6 +68,11 @@ class ViewBooksActivity : AppCompatActivity() {
             addManualBook()
         }
 
+        val filterBookButton: FloatingActionButton = findViewById<FloatingActionButton>(R.id.filterBookButton)
+        filterBookButton.setOnClickListener {
+            println("Filter Book Button Clicked")
+            showSelectSubjectDialog()
+        }
     }
 
     private val itemTouchHelperCallback = object : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT) {
@@ -124,4 +132,57 @@ class ViewBooksActivity : AppCompatActivity() {
             startActivity(intent) // Start BookDetails activity
         }
     }
+
+    private fun showSelectSubjectDialog() {
+        lifecycleScope.launch {
+            // Fetch existing subjects from the database
+            val existingSubjects = bookViewModel.getAllSubjects()
+
+            // Convert to an array for the dialog
+            val subjectNames = existingSubjects.map { it.subjectName }.toMutableList()
+            val selectedSubjects = MutableList(subjectNames.size) { false }
+
+            // Create a custom layout with a scrollable ListView
+            val listView = ListView(this@ViewBooksActivity).apply {
+                adapter = ArrayAdapter(
+                    this@ViewBooksActivity,
+                    android.R.layout.simple_list_item_multiple_choice,
+                    subjectNames
+                )
+                choiceMode = ListView.CHOICE_MODE_MULTIPLE
+                for (i in selectedSubjects.indices) {
+                    setItemChecked(i, selectedSubjects[i])
+                }
+                setOnItemClickListener { _, _, position, _ ->
+                    selectedSubjects[position] = !selectedSubjects[position]
+                }
+            }
+
+            AlertDialog.Builder(this@ViewBooksActivity)
+                .setTitle("Filter Books by Subject")
+                .setView(listView) // Set the scrollable ListView as the dialog content
+                .setPositiveButton("Filter") { _, _ ->
+                    // Add selected subjects to the adapter
+                    val newSubjects = subjectNames.filterIndexed { index, _ -> selectedSubjects[index] }
+                    // Turn the subjects into a list of strings
+                    val subjectsList = newSubjects.map { it.toString() }
+                    println("Selected subjects: $subjectsList")
+                    bookViewModel.filterBooks(subjectsList)
+
+                    bookViewModel.filteredBooks.observe(this@ViewBooksActivity) { books ->
+                        println("Filtered books: ${books.size}")
+                        books.forEach { book ->
+                            println("Book: ${book.book.title}, Subjects: ${book.subjects.joinToString { it.subjectName }}")
+                        }
+                        val bookEntries = books.map { it.book }
+                        bookAdapter.submitList(bookEntries) // Update the adapter with filtered books
+                        bookAdapter.notifyDataSetChanged()
+                    }
+
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        }
+    }
+
 }
