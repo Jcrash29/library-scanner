@@ -4,13 +4,13 @@ import entities.BookEntry
 import entities.Subject
 import java.net.URL
 
-class openLibrarySearch {
+class OpenLibrarySearch {
 
     // Get the bookEntry and subjects from the openLibrary website
     fun getBook(barCode: String): Result<Pair<BookEntry, List<Subject>>> {
         return try {
             val websiteURL = generateURL(barCode)
-            println("openLibrarySearch URL: $websiteURL")
+            println("OpenLibrarySearch URL: $websiteURL")
             val jsonResponse = URL(websiteURL).readText()
 
             if (wasNoBookFound(jsonResponse)) {
