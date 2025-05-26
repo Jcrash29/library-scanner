@@ -47,19 +47,29 @@ class openLibrarySearch {
 
     // Parse the JSON response to get the author Name
     private fun getAuthorName(jsonResponse: String): String {
-        val authorName = jsonResponse.substringAfter("\"author_name\": [\"").substringBefore("\"]")
-        return authorName
+        return if(jsonResponse.contains("\"author_name\": [")) {
+            jsonResponse.substringAfter("\"author_name\": [").substringAfter("\"").substringBefore("\"")
+        } else {
+            "" // Return an empty string if no author name is found
+        }
     }
 
     // Parse the JSON response to get the title
     private fun getTitle(jsonResponse: String): String {
-        val title = jsonResponse.substringAfter("\"title\": \"").substringBefore("\"")
-        return title
+        return if(jsonResponse.contains("\"title\": \"")) {
+            jsonResponse.substringAfter("\"title\": \"").substringBefore("\"")
+        } else {
+            "" // Return an empty string if no title is found
+        }
     }
 
     // Parse the JSON response to get the subjects
     private fun getSubjects(jsonResponse: String): List<Subject> {
-        val subjects = jsonResponse.substringAfter("\"subject\": [\"").substringBefore("\"]")
-        return subjects.split(",").map { Subject(it.trim()) }
+        if (jsonResponse.contains("\"subject\"")) {
+            val subjects = jsonResponse.substringAfter("\"subject\": [\"").substringBefore("\"]")
+            return subjects.split(",").map { Subject(it.trim()) }
+        } else {
+            return emptyList() // Return an empty list if no subjects are found
+        }
     }
 }
