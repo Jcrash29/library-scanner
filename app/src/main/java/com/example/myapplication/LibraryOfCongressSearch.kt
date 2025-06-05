@@ -128,6 +128,10 @@ class LibraryOfCongressSearch {
             println("Author  after: $author")
         }
 
+        //Standardize the string by setting ONLY the first letters to capital
+        author.split(" ")
+            .joinToString(" ") { it.lowercase().replaceFirstChar { char -> char.uppercase() } }
+
         return author
     }
 
@@ -146,6 +150,11 @@ class LibraryOfCongressSearch {
             println("Title not found")
             title = "N/A"
         }
+
+        //Standardize the string by setting ONLY the first letters to capital
+        title.split(" ")
+            .joinToString(" ") { it.lowercase().replaceFirstChar { char -> char.uppercase() } }
+
         return title
     }
 

@@ -7,17 +7,27 @@
     app:cardElevation="4dp"
     android:layout_margin="8dp">
 
-    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
+        android:orientation="horizontal"
         android:padding="8dp">
+
         <TextView
             android:id="@+id/subjectTextView"
-            android:text="Subject"
-            android:layout_width="match_parent"
+            android:layout_width="292dp"
             android:layout_height="wrap_content"
+            android:text="Subject"
             android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/numberOfBooksTextView"
+            android:layout_width="83dp"
+            android:layout_height="wrap_content"
+            android:text="###"
+            android:gravity="end"
+            android:textSize="16sp" />
+
     </LinearLayout>
 
 </androidx.cardview.widget.CardView>

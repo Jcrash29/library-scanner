@@ -49,6 +49,10 @@ class OpenLibrarySearch {
     private fun getAuthorName(jsonResponse: String): String {
         return if(jsonResponse.contains("\"author_name\": [")) {
             jsonResponse.substringAfter("\"author_name\": [").substringAfter("\"").substringBefore("\"")
+
+            //Standardize the string by setting ONLY the first letters to capital
+                .split(" ")
+                .joinToString(" ") { it.lowercase().replaceFirstChar { char -> char.uppercase() } }
         } else {
             "" // Return an empty string if no author name is found
         }
@@ -58,6 +62,9 @@ class OpenLibrarySearch {
     private fun getTitle(jsonResponse: String): String {
         return if(jsonResponse.contains("\"title\": \"")) {
             jsonResponse.substringAfter("\"title\": \"").substringBefore("\"")
+                //Standardize the string by setting ONLY the first letters to capital
+                .split(" ")
+                .joinToString(" ") { it.lowercase().replaceFirstChar { char -> char.uppercase() } }
         } else {
             "" // Return an empty string if no title is found
         }

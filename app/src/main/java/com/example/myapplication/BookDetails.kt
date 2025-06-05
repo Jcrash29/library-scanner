@@ -1,6 +1,5 @@
 package com.example.myapplication
 
-import android.content.DialogInterface
 import android.os.Bundle
 import android.widget.ArrayAdapter
 import android.widget.Button
@@ -24,10 +23,8 @@ import com.example.myapplication.ui.viewmodel.BookViewModelFactory
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import entities.BookSubjectCrossRef
 import entities.Subject
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withContext
 import kotlin.coroutines.resume
 
 class BookDetails : AppCompatActivity() {

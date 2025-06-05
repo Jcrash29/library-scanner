@@ -11,8 +11,23 @@ import com.example.myapplication.R
 class SubjectsAdapter(private val subjects: MutableList<String>) :
     RecyclerView.Adapter<SubjectsAdapter.SubjectViewHolder>() {
 
+    private var onItemClickListener: ((String) -> Unit)? = null
+
+    fun setOnItemClickListener(listener: (String) -> Unit) {
+        onItemClickListener = listener
+    }
+
     inner class SubjectViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val subjectTextView: TextView = itemView.findViewById(R.id.subjectTextView)
+
+        init {
+            itemView.setOnClickListener {
+                val position = getBindingAdapterPosition()
+                if (position != RecyclerView.NO_POSITION) {
+                    onItemClickListener?.invoke(subjects[position])
+                }
+            }
+        }
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SubjectViewHolder {

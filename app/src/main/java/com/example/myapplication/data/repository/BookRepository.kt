@@ -33,6 +33,15 @@ class BookRepository(private val bookDao: BookDao) {
             bookDao.deleteBook(book)
         }
 
+    suspend fun removeSubject(subject: Subject) =
+        withContext(Dispatchers.IO) {
+            bookDao.deleteSubject(subject)
+        }
+
+    suspend fun getBooksWithSubject(subjectName: String): List<BookWithSubjects> {
+        return bookDao.getBooksWithSubject(subjectName)
+    }
+
     suspend fun update(book: BookEntry) =
         withContext(Dispatchers.IO) {
             bookDao.update(book)

@@ -56,7 +56,30 @@ class BookViewModel(private val repository: BookRepository) : ViewModel() {
     }
 
     suspend fun removeBook(book: BookEntry) = viewModelScope.launch {
+        println("BookViewModel: Removing book: ${book.title}")
+
+        // Get the subjects associated with the book
+        val bookWithSubjects = repository.getBookWithSubjectsById(book.bookId)
+        val associatedSubjects = bookWithSubjects?.subjects ?: emptyList()
+
+        // Remove the book from the repository
         repository.removeBook(book)
+
+        // Check if each subject is still associated with any other books
+        for (subject in associatedSubjects) {
+            val isSubjectUsed = withContext(Dispatchers.IO) {
+                repository.getBooksWithSubject(subject.subjectName).isNotEmpty()
+            }
+            // If the subject is not used by any other book, remove it
+            if (!isSubjectUsed) {
+                println("BookViewModel: Removing unused subject: ${subject.subjectName}")
+                repository.removeSubject(subject)
+            }
+            else
+            {
+                println("BookViewModel: Subject ${subject.subjectName} is still used by other books, not removing.")
+            }
+        }
     }
 
     suspend fun updateBook(book: BookEntry) = viewModelScope.launch {
