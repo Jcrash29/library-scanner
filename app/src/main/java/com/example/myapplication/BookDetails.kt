@@ -80,7 +80,7 @@ class BookDetails : AppCompatActivity() {
                 authorTextBox.setText(bookEntry?.author)
 
                 // Initialize RecyclerView with subjects
-                subjectsAdapter = SubjectsAdapter(subjects.toMutableList())
+                subjectsAdapter = SubjectsAdapter(subjects.toMutableList(), bookViewModel)
                 subjectsRecyclerView.adapter = subjectsAdapter
                 println("Loading BookDetails: Subjects: ${subjects.joinToString(", ")}")
             }

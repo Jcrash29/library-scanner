@@ -101,4 +101,10 @@ class BookViewModel(private val repository: BookRepository) : ViewModel() {
     suspend fun getAllSubjects(): List<Subject> {
         return repository.getAllSubjects()
     }
+
+suspend fun getBooksCountForSubject(subjectName: String): Int {
+        return withContext(Dispatchers.IO) {
+            repository.getBooksWithSubject(subjectName).size
+        }
+    }
 }

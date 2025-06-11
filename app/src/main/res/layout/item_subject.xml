@@ -7,28 +7,35 @@
     app:cardElevation="4dp"
     android:layout_margin="8dp">
 
-    <LinearLayout
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
         android:padding="8dp">
 
         <TextView
             android:id="@+id/subjectTextView"
-            android:layout_width="292dp"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:text="Subject"
-            android:textSize="16sp" />
+            android:textSize="16sp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/numberOfBooksTextView"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            android:layout_marginEnd="8dp" />
 
         <TextView
             android:id="@+id/numberOfBooksTextView"
-            android:layout_width="83dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="###"
             android:gravity="end"
-            android:textSize="16sp" />
+            android:textSize="16sp"
+            app:layout_constraintStart_toEndOf="@+id/subjectTextView"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent" />
 
-    </LinearLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
 </androidx.cardview.widget.CardView>
-

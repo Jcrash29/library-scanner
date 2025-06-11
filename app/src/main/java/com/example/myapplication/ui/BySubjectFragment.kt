@@ -37,7 +37,7 @@ class BySubjectFragment : Fragment() {
         _binding = FragmentBySubjectBinding.inflate(inflater, container, false)
         val root: View = binding.root
 
-        subjectsAdapter = SubjectsAdapter(mutableListOf())
+        subjectsAdapter = SubjectsAdapter(mutableListOf(), bookViewModel)
         subjectsAdapter.setOnItemClickListener { subjectName: String ->
             findNavController().navigate(R.id.navigation_home, Bundle().apply {
                 putString("filter", subjectName)
@@ -54,7 +54,8 @@ class BySubjectFragment : Fragment() {
                 val subjects = bookViewModel.getAllSubjects()
                 val subjectNames = subjects.map { it.subjectName }
                 println("BySubjectFragment: Observed books, found subjects: $subjectNames")
-                subjectsAdapter.addSubjects(subjectNames)
+                val sortedSubjectNames = subjectNames.sortedBy { it.lowercase() }
+                subjectsAdapter.addSubjects(sortedSubjectNames)
                 subjectsAdapter.notifyDataSetChanged()
             }
         }

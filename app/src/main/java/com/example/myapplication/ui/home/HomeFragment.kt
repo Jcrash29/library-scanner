@@ -59,6 +59,13 @@ class HomeFragment : Fragment() {
             bookViewModel.filterBooks(listOf(filterPassedIn))
             updateFilteredBooks()
         }
+        else
+        {
+            println("HomeFragment: No filter passed in, showing all books")
+            bookViewModel.filterBooks(emptyList()) // Show all books
+            updateFilteredBooks()
+        }
+        arguments = null // Clear the arguments to prevent re-filtering on fragment recreation
 
         bookAdapter = BookAdapter { selectedBook, position ->
             val intent = Intent(requireContext(), BookDetails::class.java).apply {
@@ -200,7 +207,7 @@ class HomeFragment : Fragment() {
             books.forEach { book ->
                 println("Book: ${book.book.title}, Subjects: ${book.subjects.joinToString { it.subjectName }}")
             }
-            val bookEntries = books.map { it.book }
+            val bookEntries = books.map { it.book }.sortedBy { it.title.lowercase() } // Sort by title
             bookAdapter.submitList(bookEntries) // Update the adapter with filtered books
             bookAdapter.notifyDataSetChanged()
         }
