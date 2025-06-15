@@ -81,8 +81,8 @@ class HomeFragment : Fragment() {
 
         bookViewModel.filteredBooks.observe(viewLifecycleOwner) { books ->
             println("HomeFragment Observed books: ${books.size}")
-            val bookEntry = books.map { it.book }
-            bookAdapter.submitList(bookEntry)
+            val bookEntries = books.map { it.book }.sortedBy { it.title.lowercase() }
+            bookAdapter.submitList(bookEntries)
         }
 
         ItemTouchHelper(itemTouchHelperCallback).attachToRecyclerView(binding.recyclerView)
