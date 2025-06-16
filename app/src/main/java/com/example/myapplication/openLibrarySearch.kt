@@ -73,8 +73,8 @@ class OpenLibrarySearch {
     // Parse the JSON response to get the subjects
     private fun getSubjects(jsonResponse: String): List<Subject> {
         if (jsonResponse.contains("\"subject\"")) {
-            val subjects = jsonResponse.substringAfter("\"subject\": [\"").substringBefore("\"]")
-            return subjects.split(",").map { Subject(it.trim()) }
+            val subjects = jsonResponse.substringAfter("\"subject\": [").substringBefore("]")
+            return subjects.split(",").map { Subject(it.trim().replace("\"","")) }
         } else {
             return emptyList() // Return an empty list if no subjects are found
         }
