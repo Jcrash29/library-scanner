@@ -17,6 +17,11 @@ class OpenLibrarySearch {
                 return Result.failure(Exception("No book found"))
             }
 
+            if (jsonResponse.isEmpty()) {
+                println("Error: JSON response is empty or invalid.")
+                return Result.failure(Exception("No book found"))
+            }
+
             val bookEntry = BookEntry(
                 title = getTitle(jsonResponse),
                 author = getAuthorName(jsonResponse),
@@ -25,8 +30,9 @@ class OpenLibrarySearch {
                 isbn = barCode,
                 url = websiteURL
             )
-
-            Result.success(
+            
+            println("Decoded book from OpenLibrary: ${bookEntry.title} by ${bookEntry.author}")
+            Result.success( // It seems like we are getting HERE BEFORE Title and Author are set
                 Pair(
                     bookEntry,
                     getSubjects(jsonResponse)
@@ -47,12 +53,15 @@ class OpenLibrarySearch {
 
     // Parse the JSON response to get the author Name
     private fun getAuthorName(jsonResponse: String): String {
+        println("OpenLibrarySearch: Parsing author name from JSON response")
         return if(jsonResponse.contains("\"author_name\": [")) {
-            jsonResponse.substringAfter("\"author_name\": [").substringAfter("\"").substringBefore("\"")
+            val author = jsonResponse.substringAfter("\"author_name\": [").substringAfter("\"").substringBefore("\"")
 
             //Standardize the string by setting ONLY the first letters to capital
                 .split(" ")
                 .joinToString(" ") { it.lowercase().replaceFirstChar { char -> char.uppercase() } }
+            println("Extracted author name: $author")
+            author
         } else {
             "" // Return an empty string if no author name is found
         }
@@ -60,11 +69,14 @@ class OpenLibrarySearch {
 
     // Parse the JSON response to get the title
     private fun getTitle(jsonResponse: String): String {
+        println("OpenLibrarySearch: Parsing title from JSON response")
         return if(jsonResponse.contains("\"title\": \"")) {
-            jsonResponse.substringAfter("\"title\": \"").substringBefore("\"")
+            val title = jsonResponse.substringAfter("\"title\": \"").substringBefore("\"")
                 //Standardize the string by setting ONLY the first letters to capital
                 .split(" ")
                 .joinToString(" ") { it.lowercase().replaceFirstChar { char -> char.uppercase() } }
+            println("Extracted title: $title")
+            title
         } else {
             "" // Return an empty string if no title is found
         }
@@ -72,11 +84,15 @@ class OpenLibrarySearch {
 
     // Parse the JSON response to get the subjects
     private fun getSubjects(jsonResponse: String): List<Subject> {
-        if (jsonResponse.contains("\"subject\"")) {
+        println("OpenLibrarySearch: Parsing subjects from JSON response")
+        return if (jsonResponse.contains("\"subject\": [")) {
             val subjects = jsonResponse.substringAfter("\"subject\": [").substringBefore("]")
-            return subjects.split(",").map { Subject(it.trim().replace("\"","")) }
+            subjects.split(",")
+                .map { it.trim().replace("\"", "") }
+                .filter { it.isNotEmpty() } // Filter out empty subjects
+                .map { Subject(it) }
         } else {
-            return emptyList() // Return an empty list if no subjects are found
+            emptyList() // Return an empty list if no subjects are found
         }
     }
 }

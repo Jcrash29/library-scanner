@@ -72,16 +72,21 @@ class BookDetails : AppCompatActivity() {
             println("BookWithSubjects: $bookWithSubjects")
             bookWithSubjects?.let {
                 bookEntry = it.book
-                val subjects =
-                    it.subjects.map { subject -> subject.subjectName } // Extract subject names
+                val subjects = it.subjects.map { subject -> subject.subjectName }
                 println("subjects: $subjects")
                 println("BookDetails: Book ID: ${bookEntry?.bookId}, Title: ${bookEntry?.title}, Author: ${bookEntry?.author}")
                 titleTextBox.setText(bookEntry?.title)
                 authorTextBox.setText(bookEntry?.author)
 
-                // Initialize RecyclerView with subjects
-                subjectsAdapter = SubjectsAdapter(subjects.toMutableList(), bookViewModel)
-                subjectsRecyclerView.adapter = subjectsAdapter
+                // Initialize RecyclerView adapter only once
+                if (!::subjectsAdapter.isInitialized) {
+                    subjectsAdapter = SubjectsAdapter(mutableListOf(), bookViewModel)
+                    subjectsRecyclerView.adapter = subjectsAdapter
+                }
+
+                // Update the adapter's data after loading
+                subjectsAdapter.addSubjects(subjects)
+                subjectsAdapter.notifyDataSetChanged()
                 println("Loading BookDetails: Subjects: ${subjects.joinToString(", ")}")
             }
         }
