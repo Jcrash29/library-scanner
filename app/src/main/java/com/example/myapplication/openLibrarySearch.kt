@@ -2,6 +2,7 @@ package com.example.myapplication
 
 import entities.BookEntry
 import entities.Subject
+import org.json.JSONObject
 import java.net.URL
 
 class OpenLibrarySearch {
@@ -22,6 +23,8 @@ class OpenLibrarySearch {
                 return Result.failure(Exception("No book found"))
             }
 
+//            val jsonResponseCleaned = extractDocs(jsonResponse)
+
             val bookEntry = BookEntry(
                 title = getTitle(jsonResponse),
                 author = getAuthorName(jsonResponse),
@@ -30,13 +33,17 @@ class OpenLibrarySearch {
                 isbn = barCode,
                 url = websiteURL
             )
-            
+
             println("Decoded book from OpenLibrary: ${bookEntry.title} by ${bookEntry.author}")
-            Result.success( // It seems like we are getting HERE BEFORE Title and Author are set
-                Pair(
-                    bookEntry,
-                    getSubjects(jsonResponse)
-                )
+            if (bookEntry.title.isEmpty() || bookEntry.author.isEmpty()) {
+              return Result.failure(Exception("No book found"))
+            }
+
+            val subjects = getSubjects(jsonResponse)
+            println("Found ${subjects.size} subjects")
+            val outputBook = Pair( bookEntry, subjects)
+            Result.success(
+                outputBook
             )
         } catch (e: Exception) {
             Result.failure(e) // Return the exception as a failure result
@@ -51,48 +58,103 @@ class OpenLibrarySearch {
         return jsonResponse.contains("\"numFound\": 0")
     }
 
+    /* Sometimes the authors names comes with brackets and quotes, so we need to clean that up */
+    private fun cleanAuthorName(rawAuthor: String): String {
+        return rawAuthor.replace("[", "").replace("]", "").replace("\"", "").replace("'", "")
+    }
+
     // Parse the JSON response to get the author Name
     private fun getAuthorName(jsonResponse: String): String {
-        println("OpenLibrarySearch: Parsing author name from JSON response")
-        return if(jsonResponse.contains("\"author_name\": [")) {
-            val author = jsonResponse.substringAfter("\"author_name\": [").substringAfter("\"").substringBefore("\"")
-
-            //Standardize the string by setting ONLY the first letters to capital
-                .split(" ")
-                .joinToString(" ") { it.lowercase().replaceFirstChar { char -> char.uppercase() } }
-            println("Extracted author name: $author")
-            author
-        } else {
-            "" // Return an empty string if no author name is found
+        println("OpenLibrarySearch: Parsing title from JSON response")
+        return try {
+            val jsonObject = JSONObject(jsonResponse)
+            if (jsonObject.has("docs")) {
+                val docsArray = jsonObject.getJSONArray("docs")
+                if (docsArray.length() > 0) {
+                    val firstDoc = docsArray.getJSONObject(0)
+                    if (firstDoc.has("author_name")) {
+                        val author = cleanAuthorName(firstDoc.getString("author_name"))
+                        author
+                    } else {
+                        println("No author found in the first document")
+                        ""
+                    }
+                } else {
+                    println("Docs array is empty")
+                    ""
+                }
+            } else {
+                println("No docs array found in JSON response")
+                ""
+            }
+        } catch (e: Exception) {
+            println("Error parsing title: ${e.message}")
+            ""
         }
     }
 
     // Parse the JSON response to get the title
     private fun getTitle(jsonResponse: String): String {
         println("OpenLibrarySearch: Parsing title from JSON response")
-        return if(jsonResponse.contains("\"title\": \"")) {
-            val title = jsonResponse.substringAfter("\"title\": \"").substringBefore("\"")
-                //Standardize the string by setting ONLY the first letters to capital
-                .split(" ")
-                .joinToString(" ") { it.lowercase().replaceFirstChar { char -> char.uppercase() } }
-            println("Extracted title: $title")
-            title
-        } else {
-            "" // Return an empty string if no title is found
+        return try {
+            val jsonObject = JSONObject(jsonResponse)
+            if (jsonObject.has("docs")) {
+                val docsArray = jsonObject.getJSONArray("docs")
+                if (docsArray.length() > 0) {
+                    val firstDoc = docsArray.getJSONObject(0)
+                    if (firstDoc.has("title")) {
+                        val title = firstDoc.getString("title")
+                        title
+                    } else {
+                        println("No title found in the first document")
+                        ""
+                    }
+                } else {
+                    println("Docs array is empty")
+                    ""
+                }
+            } else {
+                println("No docs array found in JSON response")
+                ""
+            }
+        } catch (e: Exception) {
+            println("Error parsing title: ${e.message}")
+            ""
         }
     }
 
     // Parse the JSON response to get the subjects
     private fun getSubjects(jsonResponse: String): List<Subject> {
         println("OpenLibrarySearch: Parsing subjects from JSON response")
-        return if (jsonResponse.contains("\"subject\": [")) {
-            val subjects = jsonResponse.substringAfter("\"subject\": [").substringBefore("]")
-            subjects.split(",")
-                .map { it.trim().replace("\"", "") }
-                .filter { it.isNotEmpty() } // Filter out empty subjects
-                .map { Subject(it) }
-        } else {
-            emptyList() // Return an empty list if no subjects are found
+        return try {
+            val jsonObject = JSONObject(jsonResponse)
+            if (jsonObject.has("docs")) {
+                val docsArray = jsonObject.getJSONArray("docs")
+                if (docsArray.length() > 0) {
+                    val firstDoc = docsArray.getJSONObject(0)
+                    if (firstDoc.has("subject")) {
+                        println("Found subject field in the first document")
+                        val subjectsArray = firstDoc.getJSONArray("subject")
+                        println("Subjects array length: ${subjectsArray.length()}")
+                        (0 until subjectsArray.length())
+                            .map { subjectsArray.getString(it).trim() }
+                            .filter { it.isNotEmpty() }
+                            .map { Subject(it) }
+                    } else {
+                        println("No subject field found in the first document")
+                        emptyList()
+                    }
+                } else {
+                    println("Docs array is empty")
+                    emptyList()
+                }
+            } else {
+                println("No docs array found in JSON response")
+                emptyList()
+            }
+        } catch (e: Exception) {
+            println("Error parsing subjects: ${e.message}")
+            emptyList()
         }
     }
 }
